@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>المحاسبة العامة - مكتب الصفا</title>
+<style>
+:root {
+  --bg: #eef3f8;
+  --surface: #ffffff;
+  --primary: #1f3347;
+  --accent: #2f89d9;
+  --muted: #5f6b7a;
+  --border: #d5e1ec;
+  --shadow: 0 12px 28px rgba(31, 51, 71, 0.1);
+  --success: #1f9d55;
+  --danger: #c0392b;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Tahoma", "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(180deg, #f7fafe 0%, var(--bg) 100%);
+  color: #1f2937;
+}
+
+header {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #fff;
+  background: linear-gradient(135deg, #1a2b3b 0%, #2c3e50 100%);
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { height: 52px; }
+.brand h1 { margin: 0; font-size: clamp(1.05rem, 2.2vw, 1.45rem); }
+
+.ghost-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.container {
+  width: min(1200px, calc(100% - 24px));
+  margin: 18px auto 40px;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab-btn {
+  border: 1px solid var(--border);
+  background: #f4f8fc;
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 0.88rem; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+
+input, select, textarea {
+  width: 100%;
+  max-width: 420px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-family: inherit;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: right; }
+th { background: #f0f5fa; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+button.primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+button.danger { background: var(--danger); color: #fff; border: none; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+
+.muted { color: var(--muted); font-size: 0.9rem; }
+.badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+.badge.ok { background: rgba(31, 157, 85, 0.15); color: #146b3a; }
+.badge.warn { background: rgba(192, 57, 43, 0.12); color: #922b21; }
+
+.journal-line-grid {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 80px;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+@media (max-width: 720px) {
+  .journal-line-grid { grid-template-columns: 1fr; }
+}
+
+#roleBanner {
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 0.92rem;
+}
+#roleBanner.readonly { background: #fff8e6; border: 1px solid #f0d090; color: #7a5a00; }
+#roleBanner.manager { background: #e8f6ee; border: 1px solid #a8d9b8; color: #1b5e32; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="logo.png" alt="logo">
+    <h1>المحاسبة العامة</h1>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-btn" id="logoutBtn" type="button">تسجيل الخروج</button>
+  </div>
+</header>
+<div id="global-app-nav"></div>
+
+<div class="container">
+  <div id="roleBanner" class="muted" style="display:none;"></div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="accounts">دليل الحسابات</button>
+      <button type="button" class="tab-btn" data-tab="entry">قيد يومية</button>
+      <button type="button" class="tab-btn" data-tab="ledger">سجل القيود</button>
+      <button type="button" class="tab-btn" data-tab="trial">ميزان مراجعة</button>
+    </div>
+
+    <section id="accounts" class="section active">
+      <p class="muted">حسابات الدفتر العام — تُستخدم لاحقًا لربط الخزنة والجراج بالقيود المحاسبية.</p>
+      <div id="accountFormWrap" style="display:none;">
+        <div class="field">
+          <label for="accCode">رمز الحساب</label>
+          <input id="accCode" type="text" placeholder="مثال: 5110" maxlength="20">
+        </div>
+        <div class="field">
+          <label for="accName">اسم الحساب</label>
+          <input id="accName" type="text" placeholder="اسم واضح">
+        </div>
+        <div class="field">
+          <label for="accType">نوع الحساب</label>
+          <select id="accType">
+            <option value="asset">أصول</option>
+            <option value="liability">خصوم</option>
+            <option value="equity">حقوق ملكية</option>
+            <option value="revenue">إيرادات</option>
+            <option value="expense">مصروفات</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="primary" id="addAccountBtn">إضافة حساب</button>
+          <button type="button" class="primary" id="seedAccountsBtn" style="background:#34495e;">إنشاء هيكل افتراضي</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="overflow-x:auto;margin-top:14px;">
+        <table>
+          <thead>
+            <tr>
+              <th>الرمز</th>
+              <th>الاسم</th>
+              <th>النوع</th>
+              <th id="accActionsTh" style="display:none;">إجراء</th>
+            </tr>
+          </thead>
+          <tbody id="accountsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="entry" class="section">
+      <p class="muted">القيد المزدوج: مجموع المدين = مجموع الدائن.</p>
+      <div id="entryFormWrap" style="display:none;">
+        <div class="field">
+          <label for="entryDate">تاريخ القيد</label>
+          <input id="entryDate" type="date">
+        </div>
+        <div class="field">
+          <label for="entryMemo">البيان</label>
+          <textarea id="entryMemo" rows="2" placeholder="وصف مختصر للعملية"></textarea>
+        </div>
+        <div id="journalLines"></div>
+        <div class="btn-row">
+          <button type="button" class="primary" id="addLineBtn">سطر جديد</button>
+          <button type="button" class="primary" id="postEntryBtn">ترحيل القيد</button>
+        </div>
+        <p id="balanceHint" class="muted"></p>
+      </div>
+    </section>
+
+    <section id="ledger" class="section">
+      <div class="table-wrap" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>البيان</th>
+              <th>الحساب</th>
+              <th>مدين</th>
+              <th>دائن</th>
+              <th id="entryDelTh" style="display:none;">حذف</th>
+            </tr>
+          </thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="trial" class="section">
+      <p class="muted">ملخص حسب الحساب من القيود المرحّلة (للفترة الظاهرة في السجل).</p>
+      <div class="table-wrap" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>الرمز</th>
+              <th>الحساب</th>
+              <th>مدين</th>
+              <th>دائن</th>
+              <th>الرصيد</th>
+            </tr>
+          </thead>
+          <tbody id="trialBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  getDocs,
+  onSnapshot,
+  serverTimestamp,
+  writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./js/firebase-config.js";
+import { mountAppNav } from "./js/app-nav.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+mountAppNav("#global-app-nav", "accounting");
+
+const TYPE_LABELS = {
+  asset: "أصول",
+  liability: "خصوم",
+  equity: "حقوق ملكية",
+  revenue: "إيرادات",
+  expense: "مصروفات"
+};
+
+let canManage = false;
+let accountsMap = new Map();
+let entries = [];
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
+});
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(tab).classList.add("active");
+  });
+});
+
+function setRoleUi() {
+  const banner = document.getElementById("roleBanner");
+  const form = document.getElementById("accountFormWrap");
+  const entryForm = document.getElementById("entryFormWrap");
+  const accTh = document.getElementById("accActionsTh");
+  const delTh = document.getElementById("entryDelTh");
+
+  if (canManage) {
+    banner.style.display = "block";
+    banner.className = "manager";
+    banner.textContent = "صلاحيتك: مدير — يمكنك إدارة الدليل وترحيل القيود وحذف القيود.";
+    form.style.display = "block";
+    entryForm.style.display = "block";
+    accTh.style.display = "";
+    delTh.style.display = "";
+  } else {
+    banner.style.display = "block";
+    banner.className = "readonly";
+    banner.textContent = "صلاحيتك: عرض فقط — إدارة الدليل والقيود للمديرين فقط.";
+    form.style.display = "none";
+    entryForm.style.display = "none";
+    accTh.style.display = "none";
+    delTh.style.display = "none";
+  }
+}
+
+async function resolveManager(user) {
+  try {
+    const token = await user.getIdTokenResult();
+    if (token.claims.admin || token.claims.manager) return true;
+  } catch (e) {
+    console.error(e);
+  }
+  return false;
+}
+
+function renderAccountsBody() {
+  const tbody = document.getElementById("accountsBody");
+  tbody.innerHTML = "";
+  const sorted = [...accountsMap.values()].sort((a, b) =>
+    (a.code || "").localeCompare(b.code || "", "ar", { numeric: true })
+  );
+  sorted.forEach(a => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(a.code)}</td>
+      <td>${escapeHtml(a.name)}</td>
+      <td>${TYPE_LABELS[a.type] || a.type}</td>
+      <td class="acc-act" style="display:${canManage ? "" : "none"}">
+        <button type="button" class="danger btn-del-acc" data-id="${a.id}">حذف</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll(".btn-del-acc").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("حذف هذا الحساب؟")) return;
+      await deleteDoc(doc(db, "AccountingAccounts", btn.dataset.id));
+    });
+  });
+}
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+  canManage = await resolveManager(user);
+  setRoleUi();
+  renderAccountsBody();
+  rebuildLedgerAndTrial();
+  if (canManage) {
+    document.getElementById("entryDate").value = new Date().toISOString().slice(0, 10);
+    renderJournalLines([emptyLine(), emptyLine()]);
+    document.getElementById("addLineBtn").onclick = () => addJournalLine();
+    document.getElementById("addAccountBtn").onclick = addAccount;
+    document.getElementById("seedAccountsBtn").onclick = seedDefaultAccounts;
+    document.getElementById("postEntryBtn").onclick = postJournalEntry;
+  }
+});
+
+function emptyLine() {
+  return { accountId: "", debit: "", credit: "" };
+}
+
+function renderJournalLines(lines) {
+  const wrap = document.getElementById("journalLines");
+  wrap.innerHTML = lines
+    .map(
+      (line, i) => `
+    <div class="journal-line-grid" data-idx="${i}">
+      <div class="field">
+        <label>الحساب</label>
+        <select class="jl-acc">
+          <option value="">— اختر —</option>
+          ${[...accountsMap.values()]
+            .sort((a, b) => (a.code || "").localeCompare(b.code || "", "ar"))
+            .map(
+              a =>
+                `<option value="${a.id}" ${a.id === line.accountId ? "selected" : ""}>${escapeHtml(a.code)} — ${escapeHtml(a.name)}</option>`
+            )
+            .join("")}
+        </select>
+      </div>
+      <div class="field">
+        <label>مدين</label>
+        <input type="number" class="jl-deb" min="0" step="0.01" value="${line.debit}">
+      </div>
+      <div class="field">
+        <label>دائن</label>
+        <input type="number" class="jl-cred" min="0" step="0.01" value="${line.credit}">
+      </div>
+      <div>
+        <button type="button" class="danger jl-remove" ${lines.length <= 2 ? "disabled" : ""}>حذف</button>
+      </div>
+    </div>`
+    )
+    .join("");
+
+  wrap.querySelectorAll(".jl-remove").forEach((btn, i) => {
+    btn.addEventListener("click", () => {
+      const next = collectLinesFromDom();
+      next.splice(i, 1);
+      if (next.length < 2) return;
+      renderJournalLines(next);
+    });
+  });
+
+  wrap.querySelectorAll("input, select").forEach(inp => {
+    inp.addEventListener("input", updateBalanceHint);
+    inp.addEventListener("change", updateBalanceHint);
+  });
+  updateBalanceHint();
+}
+
+function collectLinesFromDom() {
+  const rows = document.querySelectorAll("#journalLines .journal-line-grid");
+  return [...rows].map(row => ({
+    accountId: row.querySelector(".jl-acc").value,
+    debit: row.querySelector(".jl-deb").value,
+    credit: row.querySelector(".jl-cred").value
+  }));
+}
+
+function addJournalLine() {
+  const lines = collectLinesFromDom();
+  lines.push(emptyLine());
+  renderJournalLines(lines);
+}
+
+function updateBalanceHint() {
+  const lines = collectLinesFromDom();
+  let d = 0;
+  let c = 0;
+  lines.forEach(l => {
+    d += Number(l.debit) || 0;
+    c += Number(l.credit) || 0;
+  });
+  const el = document.getElementById("balanceHint");
+  const diff = Math.round((d - c) * 100) / 100;
+  if (Math.abs(diff) < 0.01) {
+    el.innerHTML = `<span class="badge ok">موازن: مدين ${d.toFixed(2)} = دائن ${c.toFixed(2)}</span>`;
+  } else {
+    el.innerHTML = `<span class="badge warn">غير موازن: الفرق ${diff.toFixed(2)}</span>`;
+  }
+}
+
+async function addAccount() {
+  const code = document.getElementById("accCode").value.trim();
+  const name = document.getElementById("accName").value.trim();
+  const type = document.getElementById("accType").value;
+  if (!code || !name) {
+    alert("أدخل الرمز والاسم");
+    return;
+  }
+  await addDoc(collection(db, "AccountingAccounts"), {
+    code,
+    name,
+    type,
+    isActive: true,
+    createdAt: serverTimestamp()
+  });
+  document.getElementById("accCode").value = "";
+  document.getElementById("accName").value = "";
+}
+
+const DEFAULT_ACCOUNTS = [
+  ["1110", "الصندوق والبنوك", "asset"],
+  ["1130", "العملاء", "asset"],
+  ["2110", "الموردون", "liability"],
+  ["3110", "رأس المال", "equity"],
+  ["4110", "إيرادات التشغيل", "revenue"],
+  ["5110", "مصروفات تشغيلية", "expense"]
+];
+
+async function seedDefaultAccounts() {
+  if (!confirm("سيتم إضافة حسابات أساسية إن لم تكن موجودة. متابعة؟")) return;
+  const snap = await getDocs(collection(db, "AccountingAccounts"));
+  const existingCodes = new Set();
+  snap.forEach(d => existingCodes.add((d.data().code || "").trim()));
+  const batch = writeBatch(db);
+  let n = 0;
+  for (const [code, name, type] of DEFAULT_ACCOUNTS) {
+    if (existingCodes.has(code)) continue;
+    const ref = doc(collection(db, "AccountingAccounts"));
+    batch.set(ref, { code, name, type, isActive: true, createdAt: serverTimestamp() });
+    n++;
+  }
+  if (n === 0) {
+    alert("الحسابات الافتراضية موجودة مسبقًا.");
+    return;
+  }
+  await batch.commit();
+  alert(`تمت إضافة ${n} حسابًا.`);
+}
+
+async function postJournalEntry() {
+  const date = document.getElementById("entryDate").value;
+  const memo = document.getElementById("entryMemo").value.trim();
+  const raw = collectLinesFromDom();
+  const lines = raw
+    .map(l => ({
+      accountId: l.accountId,
+      debit: Math.round((Number(l.debit) || 0) * 100) / 100,
+      credit: Math.round((Number(l.credit) || 0) * 100) / 100
+    }))
+    .filter(l => l.accountId && (l.debit > 0 || l.credit > 0));
+
+  if (lines.length < 2) {
+    alert("أضف سطرين على الأقل بمبالغ صحيحة.");
+    return;
+  }
+  for (const l of lines) {
+    if (l.debit > 0 && l.credit > 0) {
+      alert("كل سطر إما مدين أو دائن فقط.");
+      return;
+    }
+  }
+  let d = 0;
+  let c = 0;
+  lines.forEach(l => {
+    d += l.debit;
+    c += l.credit;
+  });
+  if (Math.abs(d - c) > 0.01) {
+    alert("القيد غير متوازن.");
+    return;
+  }
+
+  await addDoc(collection(db, "JournalEntries"), {
+    date,
+    memo: memo || "قيد يومية",
+    lines,
+    createdAt: serverTimestamp(),
+    createdBy: auth.currentUser.uid
+  });
+  document.getElementById("entryMemo").value = "";
+  renderJournalLines([emptyLine(), emptyLine()]);
+  alert("تم ترحيل القيد.");
+}
+
+onSnapshot(collection(db, "AccountingAccounts"), snap => {
+  accountsMap = new Map();
+  snap.forEach(docSnap => {
+    accountsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+  });
+  renderAccountsBody();
+  if (canManage) {
+    const lines = collectLinesFromDom();
+    renderJournalLines(lines.length >= 2 ? lines : [emptyLine(), emptyLine()]);
+  }
+  rebuildLedgerAndTrial();
+});
+
+onSnapshot(collection(db, "JournalEntries"), snap => {
+  entries = [];
+  snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+  entries.sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() ?? 0;
+    const tb = b.createdAt?.toMillis?.() ?? 0;
+    return tb - ta;
+  });
+  rebuildLedgerAndTrial();
+});
+
+function rebuildLedgerAndTrial() {
+  const ledgerBody = document.getElementById("ledgerBody");
+  ledgerBody.innerHTML = "";
+
+  entries.forEach(entry => {
+    const lines = entry.lines || [];
+    lines.forEach((ln, idx) => {
+      const acc = accountsMap.get(ln.accountId);
+      const accLabel = acc ? `${acc.code} — ${acc.name}` : ln.accountId;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${idx === 0 ? escapeHtml(entry.date || "") : ""}</td>
+        <td>${idx === 0 ? escapeHtml(entry.memo || "") : ""}</td>
+        <td>${escapeHtml(accLabel)}</td>
+        <td>${ln.debit ? Number(ln.debit).toFixed(2) : ""}</td>
+        <td>${ln.credit ? Number(ln.credit).toFixed(2) : ""}</td>
+        <td class="entry-del" style="display:${canManage ? "" : "none"}">
+          ${idx === 0 ? `<button type="button" class="danger btn-del-entry" data-id="${entry.id}">حذف القيد</button>` : ""}
+        </td>
+      `;
+      ledgerBody.appendChild(tr);
+    });
+  });
+
+  ledgerBody.querySelectorAll(".btn-del-entry").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("حذف القيد بالكامل؟")) return;
+      await deleteDoc(doc(db, "JournalEntries", btn.dataset.id));
+    });
+  });
+
+  const totals = new Map();
+  entries.forEach(entry => {
+    (entry.lines || []).forEach(ln => {
+      const acc = accountsMap.get(ln.accountId);
+      if (!acc) return;
+      const cur = totals.get(ln.accountId) || { debit: 0, credit: 0, code: acc.code, name: acc.name };
+      cur.debit += ln.debit || 0;
+      cur.credit += ln.credit || 0;
+      totals.set(ln.accountId, cur);
+    });
+  });
+
+  const trialBody = document.getElementById("trialBody");
+  trialBody.innerHTML = "";
+  [...totals.values()]
+    .sort((a, b) => (a.code || "").localeCompare(b.code || "", "ar", { numeric: true }))
+    .forEach(t => {
+      const balance = t.debit - t.credit;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(t.code)}</td>
+        <td>${escapeHtml(t.name)}</td>
+        <td>${t.debit.toFixed(2)}</td>
+        <td>${t.credit.toFixed(2)}</td>
+        <td>${balance.toFixed(2)}</td>
+      `;
+      trialBody.appendChild(tr);
+    });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+</script>
+</body>
+</html>

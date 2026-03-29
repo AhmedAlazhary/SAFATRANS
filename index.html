@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول - مكتب الصفا</title>
+
+<style>
+:root {
+  --primary: #1f4f7a;
+  --primary-dark: #173b5b;
+  --surface: rgba(255, 255, 255, 0.95);
+  --text: #1f2937;
+  --muted: #5f6b7a;
+  --border: #d4dce5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #eef4fa 0%, #dfeaf4 100%);
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("logo.png") no-repeat center center;
+  background-size: min(62vw, 420px);
+  filter: blur(22px);
+  opacity: 0.17;
+  z-index: 0;
+}
+
+.login-box {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  padding: 34px 28px;
+  border-radius: 22px;
+  width: min(92vw, 460px);
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+.login-box img {
+  width: clamp(95px, 18vw, 130px);
+  margin-bottom: 14px;
+}
+
+.login-title {
+  margin: 0 0 10px;
+  color: var(--primary-dark);
+  font-size: clamp(1.15rem, 2.6vw, 1.55rem);
+  line-height: 1.6;
+}
+
+.login-subtitle {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: clamp(0.88rem, 1.9vw, 0.98rem);
+  line-height: 1.8;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 16px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #7fb1dd;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.14);
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #3498db;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 6px;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+@media (max-width: 480px) {
+  .login-box {
+    width: calc(100vw - 24px);
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+
+  input,
+  button {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+  <img src="logo.gif" alt="شعار مكتب الصفا">
+  <h3 class="login-title">مرحبًا بك فى نظام مكتب الصفا للنقل</h3>
+  <p class="login-subtitle">من فضلك قم بتسجيل الدخول باسم المستخدم وكلمة المرور الخاصة بك والمقدمة من مكتب الصفا للنقل</p>
+
+  <input type="text" id="username" placeholder="اسم المستخدم">
+  <input type="password" id="password" placeholder="كلمة السر">
+
+  <button onclick="login()">تسجيل الدخول</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyARqSgfh78TqFQ2hhZaAtUaVQFqlPuRM3w",
+  authDomain: "trialsafaprices2026.firebaseapp.com",
+  projectId: "trialsafaprices2026",
+  storageBucket: "trialsafaprices2026.appspot.com",
+  messagingSenderId: "177091434445",
+  appId: "1:177091434445:web:568b6ae3ba270a21d4d684"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const usersMap = {
+  "ahmed": "ahmed@safatrans.com",
+  "hesham": "hesham@safatrans.com",
+  "omar": "omar@safatrans.com",
+  "sabry": "sabry@safatrans.com"
+};
+
+function login() {
+  const username = document.getElementById("username").value.trim().toLowerCase();
+  const password = document.getElementById("password").value;
+  const email = usersMap[username];
+
+  if (!email) {
+    alert("اسم المستخدم غير صحيح");
+    return;
+  }
+
+  firebase.auth().signInWithEmailAndPassword(email, password)
+    .then(() => {
+      window.location.href = "dashboard.html";
+    })
+    .catch(() => {
+      alert("كلمة السر غير صحيحة");
+    });
+}
+</script>
+
+</body>
+</html>

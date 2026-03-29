@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بيان الشغل اليومي - مكتب الصفا</title>
+
+<style>
+:root {
+  --bg: #edf3f9;
+  --surface: #ffffff;
+  --surface-soft: #f7fbff;
+  --primary: #223547;
+  --accent: #2f89d9;
+  --accent-soft: #e8f3fe;
+  --success: #27ae60;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --text: #1f2937;
+  --muted: #697586;
+  --border: #d6e0eb;
+  --shadow: 0 12px 30px rgba(34, 53, 71, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: linear-gradient(180deg, #f5f8fc 0%, #eaf1f8 100%);
+  font-family: "Tahoma", "Segoe UI", Arial, sans-serif;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #1f3243 0%, #2c3e50 100%);
+  box-shadow: 0 8px 24px rgba(20, 31, 44, 0.18);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+header img {
+  height: clamp(46px, 7vw, 64px);
+  width: auto;
+}
+
+header h1 {
+  margin: 0;
+  font-size: clamp(1.05rem, 2.4vw, 1.5rem);
+}
+
+.header-actions,
+.toolbar-actions,
+.card-actions,
+.table-actions,
+.summary-cards {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: clamp(0.9rem, 1.8vw, 1rem);
+  font-weight: 700;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.add-btn {
+  background: var(--success);
+  color: #fff;
+}
+
+.save-btn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.print-btn {
+  background: var(--warning);
+  color: #fff;
+}
+
+.delete-btn,
+.delete-day-btn {
+  background: var(--danger);
+  color: #fff;
+}
+
+.delete-btn {
+  padding: 8px 12px;
+}
+
+.container {
+  width: min(1480px, calc(100% - 24px));
+  margin: 18px auto 28px;
+}
+
+.panel,
+.day-card {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.panel-head h2,
+.section-title,
+.card-title {
+  margin: 0;
+}
+
+.summary-cards {
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  flex: 1 1 230px;
+  min-width: 220px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f7fbff 0%, #edf5fd 100%);
+  border: 1px solid var(--border);
+}
+
+.summary-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-bottom: 6px;
+}
+
+.summary-value {
+  display: block;
+  color: var(--primary);
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+.summary-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.summary-card .field {
+  min-width: 180px;
+  margin-top: 10px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.toolbar-fields {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.status-line {
+  min-height: 22px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+input {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #ccd8e4;
+  background: #fff;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 137, 217, 0.14);
+}
+
+input[disabled] {
+  background: #f5f7fa;
+  color: #8b95a7;
+  cursor: not-allowed;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-soft);
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-actions {
+  margin-top: 14px;
+  justify-content: flex-start;
+}
+
+table {
+  width: 100%;
+  min-width: 1440px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+th,
+td {
+  padding: 10px 8px;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--accent);
+  color: #fff;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.date-cell {
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.row-meta {
+  font-size: 0.83rem;
+  color: var(--muted);
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.row-lock {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff3e6;
+  color: #b26100;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.archive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.archive-month-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.archive-month-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.archive-month-title {
+  margin: 0;
+  color: var(--primary);
+  font-size: 1.05rem;
+}
+
+.archive-month-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.archive-stat {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.archive-month-card select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ccd8e4;
+  background: #fff;
+  font-size: 0.94rem;
+}
+
+.day-card {
+  padding: 16px;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-date {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.card-actions {
+  align-items: center;
+}
+
+.toggle-btn {
+  background: #eef5fb;
+  color: var(--primary);
+}
+
+.day-card.collapsed .table-wrap {
+  display: none;
+}
+
+.empty-state {
+  padding: 22px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.changes-list {
+  display: grid;
+  gap: 10px;
+}
+
+.change-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+.change-main {
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.change-meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.selected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+#printArea {
+  display: none;
+}
+
+@media print {
+  body.print-mode > *:not(#printArea) {
+    display: none !important;
+  }
+
+  body.print-mode #printArea {
+    display: block !important;
+  }
+
+  body.print-mode {
+    background: #fff;
+  }
+
+  body.print-mode #printArea .print-title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #223547;
+    text-align: center;
+  }
+
+  body.print-mode #printArea .print-date {
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #223547;
+    text-align: right;
+  }
+
+  body.print-mode #printArea table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 0;
+  }
+
+  body.print-mode #printArea th,
+  body.print-mode #printArea td {
+    border: 1px solid #b9c6d3;
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 10px;
+    word-break: break-word;
+  }
+
+  body.print-mode #printArea th {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-weight: 700;
+    white-space: normal;
+    line-height: 1.3;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: min(100% - 16px, 1000px);
+    margin-top: 12px;
+  }
+
+  header,
+  .panel,
+  .day-card {
+    padding: 12px;
+  }
+
+  .brand,
+  .header-actions,
+  .toolbar-fields,
+  .toolbar-actions,
+  .table-actions,
+  .summary-card {
+    width: 100%;
+  }
+
+  .header-actions button,
+  .toolbar-actions button,
+  .card-actions button,
+  .table-actions button {
+    flex: 1 1 140px;
+  }
+
+  .field {
+    min-width: 100%;
+  }
+
+  input,
+  button {
+    font-size: 0.92rem;
+  }
+
+  table {
+    width: 1320px;
+    min-width: 1320px;
+    max-width: 1320px;
+  }
+
+  th,
+  td {
+    padding: 8px 6px;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+
+  td input {
+    min-width: 88px;
+    padding: 8px 6px;
+    font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  .selected-badge {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .panel,
+  .day-card {
+    border-radius: 14px;
+  }
+
+  .card-actions,
+  .toolbar-actions,
+  .table-actions {
+    gap: 8px;
+  }
+
+  table {
+    width: 1280px;
+    min-width: 1280px;
+    max-width: 1280px;
+  }
+}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="brand">
+    <img src="logo.png" alt="شعار مكتب الصفا">
+    <h1>بيان الشغل اليومي</h1>
+  </div>
+
+  <div class="header-actions">
+    <button class="ghost-btn" onclick="openSharedLists()">إدارة القوائم</button>
+    <button class="ghost-btn" onclick="goBack()">رجوع</button>
+    <button class="ghost-btn" onclick="logout()">تسجيل خروج</button>
+  </div>
+</header>
+<div id="global-app-nav"></div>
+
+<div class="container">
+  <section class="panel">
+    <div class="panel-head">
+      <h2 id="currentDateTitle">بيان اليوم</h2>
+      <div id="currentSaveStatus" class="status-line">جارٍ تحميل البيانات...</div>
+    </div>
+
+    <div class="summary-cards">
+      <div class="summary-card">
+        <span class="summary-label">إجمالي الحاويات خلال الشهر</span>
+        <span id="monthContainerTotal" class="summary-value">0</span>
+        <span id="monthRangeLabel" class="summary-note">يتم الحساب حسب التاريخ المفتوح</span>
+        <div class="field">
+          <label for="summaryMonthPicker">اختيار الشهر</label>
+          <input type="month" id="summaryMonthPicker">
+        </div>
+        <div class="table-actions">
+          <button class="save-btn" onclick="exportCurrentDate()">تصدير اليوم</button>
+          <button class="save-btn" onclick="exportSelectedMonth()">تصدير الشهر</button>
+          <button class="save-btn" onclick="exportCurrentDateExcel()">Excel اليوم</button>
+          <button class="save-btn" onclick="exportSelectedMonthExcel()">Excel الشهر</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-fields">
+        <div class="field">
+          <label for="datePicker">اختيار التاريخ</label>
+          <input type="date" id="datePicker">
+        </div>
+      </div>
+
+      <div class="toolbar-actions">
+        <button class="save-btn" onclick="openSelectedDate()">عرض التاريخ</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>عدد الحاويات</th>
+            <th>الحجم</th>
+            <th>المكان</th>
+            <th>مكان النقلة</th>
+            <th>التوكيل</th>
+            <th>نوع</th>
+            <th>العميل</th>
+            <th>ملاحظات</th>
+            <th>آخر تعديل بواسطة</th>
+            <th>وقت آخر تعديل</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="currentTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="table-actions">
+      <button class="add-btn" onclick="addRow(currentDate)">إضافة سطر للتاريخ الحالي</button>
+      <button class="save-btn" onclick="saveDate(currentDate, true)">حفظ التاريخ الحالي</button>
+      <button class="print-btn" onclick="printDate(currentDate)">طباعة الجدول الحالي</button>
+      <button class="delete-day-btn" onclick="deleteDay(currentDate)">حذف اليوم الحالي</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-header">
+      <h2 class="section-title">الأرشيف الشهري</h2>
+      <div class="selected-badge">اختر الشهر ثم اليوم لعرضه في الجدول الرئيسي فقط</div>
+    </div>
+    <div class="field" style="margin-bottom: 14px;">
+      <label for="archiveSearchInput">بحث سريع عن يوم داخل الأرشيف</label>
+      <input type="search" id="archiveSearchInput" placeholder="اكتب التاريخ أو اسم اليوم أو الشهر">
+    </div>
+    <div id="archiveContainer" class="archive-grid"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-header">
+      <h2 class="section-title">سجل التغييرات</h2>
+      <div class="selected-badge">يعرض آخر ما تم تعديله داخل الصفحة</div>
+    </div>
+    <div id="changeLogContainer" class="changes-list">
+      <div class="empty-state">جارٍ تحميل سجل التغييرات...</div>
+    </div>
+  </section>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyARqSgfh78TqFQ2hhZaAtUaVQFqlPuRM3w",
+  authDomain: "trialsafaprices2026.firebaseapp.com",
+  databaseURL: "https://trialsafaprices2026-default-rtdb.firebaseio.com",
+  projectId: "trialsafaprices2026",
+  storageBucket: "trialsafaprices2026.appspot.com",
+  messagingSenderId: "177091434445",
+  appId: "1:177091434445:web:568b6ae3ba270a21d4d684"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+const today = new Date().toISOString().split("T")[0];
+const LOCK_DURATION_MS = 20000;
+const LOCK_RENEW_MS = 8000;
+
+const datePicker = document.getElementById("datePicker");
+const currentTableBody = document.getElementById("currentTableBody");
+const archiveContainer = document.getElementById("archiveContainer");
+const changeLogContainer = document.getElementById("changeLogContainer");
+const currentDateTitle = document.getElementById("currentDateTitle");
+const currentSaveStatus = document.getElementById("currentSaveStatus");
+const monthContainerTotal = document.getElementById("monthContainerTotal");
+const monthRangeLabel = document.getElementById("monthRangeLabel");
+const summaryMonthPicker = document.getElementById("summaryMonthPicker");
+const archiveSearchInput = document.getElementById("archiveSearchInput");
+
+const DEFAULT_LIST_OPTIONS = {
+  sizes: ["20", "40", "2*20"],
+  places: ["الإسكندرية", "الدخيلة"],
+  moves: ["15مايو", "ابو المطامير", "ابو رواش", "اكتوبر", "العاشر", "السادات"],
+  agencies: ["CMA", "MSC", "MESCO", "بان مارين", "MAERSK"],
+  types: ["صادر", "وارد"],
+  clients: ["النساجون", "موفت", "هيثم", "سحر", "شيماء", "مروة"]
+};
+
+const FIELD_TO_LIST_ID = {
+  size: "sizes",
+  place: "places",
+  move: "moves",
+  agency: "agencies",
+  type: "types",
+  client: "clients"
+};
+
+const FIELD_LABELS = {
+  containerCount: "عدد الحاويات",
+  size: "الحجم",
+  place: "المكان",
+  move: "مكان النقلة",
+  agency: "التوكيل",
+  type: "النوع",
+  client: "العميل",
+  notes: "ملاحظات"
+};
+
+let currentUser = null;
+let currentDate = today;
+let currentSummaryMonth = today.slice(0, 7);
+let archiveSearchTerm = "";
+let dailyData = {};
+let dirtyDates = {};
+let saveTimers = {};
+let savingDates = {};
+let pendingImmediateSaves = {};
+let activeLocks = {};
+let lockIntervals = {};
+let sharedListOptions = {};
+let changeLogEntries = [];
+
+datePicker.value = today;
+summaryMonthPicker.value = currentSummaryMonth;
+
+firebase.auth().onAuthStateChanged(user => {
+  currentUser = user;
+  if (!user) {
+    window.location = "index.html";
+  }
+});
+
+// Data model helpers
+function getUserId() {
+  return currentUser ? currentUser.uid : "anonymous";
+}
+
+function getUserLabel() {
+  if (!currentUser) return "مستخدم غير معروف";
+  return currentUser.email || currentUser.displayName || currentUser.uid;
+}
+
+function generateRowId() {
+  return db.ref().push().key;
+}
+
+function createRow(overrides = {}) {
+  return {
+    id: overrides.id || generateRowId(),
+    order: typeof overrides.order === "number" ? overrides.order : Date.now(),
+    containerCount: overrides.containerCount || "",
+    size: overrides.size || "",
+    place: overrides.place || "",
+    move: overrides.move || "",
+    agency: overrides.agency || "",
+    type: overrides.type || "",
+    client: overrides.client || "",
+    notes: overrides.notes || "",
+    updatedAt: overrides.updatedAt || null,
+    baseUpdatedAt: overrides.baseUpdatedAt !== undefined ? overrides.baseUpdatedAt : (overrides.updatedAt || null),
+    updatedBy: overrides.updatedBy || "",
+    lock: overrides.lock || null
+  };
+}
+
+function normalizeRow(row, index = 0) {
+  return createRow({
+    id: row && row.id ? row.id : "legacy-" + index,
+    order: row && typeof row.order === "number" ? row.order : index,
+    containerCount: row && row.containerCount ? row.containerCount : "",
+    size: row && row.size ? row.size : "",
+    place: row && row.place ? row.place : "",
+    move: row && row.move ? row.move : "",
+    agency: row && row.agency ? row.agency : "",
+    type: row && row.type ? row.type : "",
+    client: row && row.client ? row.client : "",
+    notes: row && row.notes ? row.notes : "",
+    updatedAt: row && row.updatedAt ? row.updatedAt : null,
+    baseUpdatedAt: row && row.baseUpdatedAt !== undefined ? row.baseUpdatedAt : (row && row.updatedAt ? row.updatedAt : null),
+    updatedBy: row && row.updatedBy ? row.updatedBy : "",
+    lock: row && row.lock ? row.lock : null
+  });
+}
+
+function sortRows(rows) {
+  return [...rows].sort((a, b) => Number(a.order) - Number(b.order));
+}
+
+function ensureDateRows(date) {
+  if (!Array.isArray(dailyData[date]) || !dailyData[date].length) {
+    dailyData[date] = [createRow()];
+  }
+  return dailyData[date];
+}
+
+function getStorageKey(date) {
+  return "dailyDraft-" + date;
+}
+
+function readDraft(date) {
+  const raw = localStorage.getItem(getStorageKey(date));
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.map((row, index) => normalizeRow(row, index));
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveDraft(date) {
+  localStorage.setItem(getStorageKey(date), JSON.stringify(ensureDateRows(date)));
+}
+
+function clearDraft(date) {
+  localStorage.removeItem(getStorageKey(date));
+}
+
+function markDateDirty(date) {
+  dirtyDates[date] = true;
+}
+
+function clearDateDirty(date) {
+  delete dirtyDates[date];
+}
+
+// Shared list helpers
+function normalizeOptionValue(value) {
+  return String(value || "").trim();
+}
+
+function makeOptionKey(value) {
+  const normalized = normalizeOptionValue(value).toLocaleLowerCase("ar");
+  return btoa(unescape(encodeURIComponent(normalized))).replace(/[+/=]/g, "_");
+}
+
+function getMergedListOptions(listId) {
+  const defaults = DEFAULT_LIST_OPTIONS[listId] || [];
+  const shared = sharedListOptions[listId] || [];
+  return Array.from(new Set([...defaults, ...shared].map(normalizeOptionValue).filter(Boolean)));
+}
+
+function renderSharedDatalist(listId) {
+  const merged = getMergedListOptions(listId);
+  const datalist = document.getElementById(listId);
+  if (datalist) {
+    datalist.innerHTML = merged
+      .map(option => `<option value="${escapeHtml(option)}">`)
+      .join("");
+  }
+
+  // تحديث أي select مستخدم لنفس القائمة (لتكون "قائمة منسدلة" موحدة)
+  const selects = document.querySelectorAll(`select[data-list-id="${listId}"]`);
+  selects.forEach(sel => {
+    const currentValue = sel.value || "";
+    const mergedWithCurrent = [...merged];
+    const currentCmp = normalizeOptionValue(currentValue).toLocaleLowerCase("ar");
+    const mergedCmpSet = new Set(
+      mergedWithCurrent.map(v => normalizeOptionValue(v).toLocaleLowerCase("ar"))
+    );
+    if (currentCmp && !mergedCmpSet.has(currentCmp)) {
+      mergedWithCurrent.push(currentValue);
+    }
+
+    const optionsHtml = mergedWithCurrent
+      .map(opt => normalizeOptionValue(opt))
+      .filter(Boolean)
+      .filter((opt, idx, arr) => arr.findIndex(x => normalizeOptionValue(x).toLocaleLowerCase("ar") === normalizeOptionValue(opt).toLocaleLowerCase("ar")) === idx)
+      .sort((a, b) => a.localeCompare(b, "ar", { numeric: true }))
+      .map(opt => {
+        const optCmp = normalizeOptionValue(opt).toLocaleLowerCase("ar");
+        const selected = currentCmp && optCmp === currentCmp ? "selected" : "";
+        return `<option value="${escapeHtml(opt)}" ${selected}>${escapeHtml(opt)}</option>`;
+      })
+      .join("");
+
+    sel.innerHTML = optionsHtml;
+    if (currentValue) {
+      // سيتم اختيار القيمة تلقائيًا إذا كانت موجودة داخل optionsHtml
+      sel.value = currentValue;
+    }
+  });
+}
+
+function renderAllSharedDatalists() {
+  Object.keys(DEFAULT_LIST_OPTIONS).forEach(renderSharedDatalist);
+}
+
+function saveSharedOptionForField(field, value) {
+  const listId = FIELD_TO_LIST_ID[field];
+  const normalized = normalizeOptionValue(value);
+
+  if (!listId || !normalized) {
+    return Promise.resolve();
+  }
+
+  const existing = getMergedListOptions(listId).map(item => item.toLocaleLowerCase("ar"));
+  if (existing.includes(normalized.toLocaleLowerCase("ar"))) {
+    return Promise.resolve();
+  }
+
+  const optionKey = makeOptionKey(normalized);
+  return db.ref("sharedLists/" + listId + "/" + optionKey).set(normalized).catch(() => {});
+}
+
+function getBrokenSharedOptionKeys(listId, rawMap) {
+  if (!rawMap || typeof rawMap !== "object") {
+    return [];
+  }
+
+  const defaults = new Set((DEFAULT_LIST_OPTIONS[listId] || []).map(item => normalizeOptionValue(item).toLocaleLowerCase("ar")));
+  const entries = Object.entries(rawMap)
+    .map(([key, value]) => [key, normalizeOptionValue(value)])
+    .filter(([, value]) => value);
+
+  return entries
+    .filter(([, value]) => {
+      const normalized = value.toLocaleLowerCase("ar");
+      if (defaults.has(normalized)) {
+        return false;
+      }
+
+      return entries.some(([, otherValue]) => {
+        const otherNormalized = otherValue.toLocaleLowerCase("ar");
+        return otherNormalized !== normalized && otherNormalized.startsWith(normalized) && otherNormalized.length > normalized.length;
+      });
+    })
+    .map(([key]) => key);
+}
+
+function cleanupBrokenSharedLists(raw) {
+  const updates = {};
+
+  Object.keys(DEFAULT_LIST_OPTIONS).forEach(listId => {
+    const brokenKeys = getBrokenSharedOptionKeys(listId, raw[listId]);
+    brokenKeys.forEach(key => {
+      updates[listId + "/" + key] = null;
+    });
+  });
+
+  const moveEntries = raw.moves && typeof raw.moves === "object" ? Object.entries(raw.moves) : [];
+  moveEntries.forEach(([key, value]) => {
+    if (normalizeOptionValue(value) === "ال") {
+      updates["moves/" + key] = null;
+    }
+  });
+
+  if (!Object.keys(updates).length) {
+    return;
+  }
+
+  db.ref("sharedLists").update(updates).catch(() => {});
+}
+
+// Rendering helpers
+function setCurrentStatus(message, isError = false) {
+  currentSaveStatus.textContent = message;
+  currentSaveStatus.style.color = isError ? "#c0392b" : "#697586";
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatArabicDate(date) {
+  return new Date(date + "T00:00:00").toLocaleDateString("ar-EG", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return "-";
+  return new Date(ts).toLocaleString("ar-EG", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function logChange(action, details = {}) {
+  const entry = {
+    action,
+    user: getUserLabel(),
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    ...details
+  };
+
+  return db.ref("changeLog").push(entry).catch(() => {});
+}
+
+function renderChangeLog() {
+  if (!changeLogEntries.length) {
+    changeLogContainer.innerHTML = '<div class="empty-state">لا توجد تغييرات مسجلة حتى الآن.</div>';
+    return;
+  }
+
+  changeLogContainer.innerHTML = changeLogEntries.map(entry => `
+    <div class="change-item">
+      <div class="change-main">${escapeHtml(entry.message || "تم تعديل البيانات")}</div>
+      <div class="change-meta">
+        بواسطة: ${escapeHtml(entry.user || "-")}<br>
+        الوقت: ${escapeHtml(formatTimestamp(entry.createdAt))}
+      </div>
+    </div>
+  `).join("");
+}
+
+function isRowLockedByOther(row) {
+  if (!row || !row.lock || !row.lock.expiresAt) return false;
+  if (Date.now() > row.lock.expiresAt) return false;
+  return row.lock.userId && row.lock.userId !== getUserId();
+}
+
+function getRowLockLabel(row) {
+  if (!isRowLockedByOther(row)) return "";
+  const name = row.lock.userName || "مستخدم آخر";
+  return "السطر قيد التعديل بواسطة " + name;
+}
+
+function renderMetaCell(row) {
+  return `
+    <div class="row-meta">${escapeHtml(row.updatedBy || "-")}</div>
+    ${isRowLockedByOther(row) ? `<span class="row-lock">${escapeHtml(getRowLockLabel(row))}</span>` : ""}
+  `;
+}
+
+function renderTimeCell(row) {
+  return `
+    <div class="row-meta">${escapeHtml(formatTimestamp(row.updatedAt))}</div>
+    ${isRowLockedByOther(row) ? `<span class="row-lock">مقفول مؤقتًا</span>` : ""}
+  `;
+}
+
+function renderRows(rows, date, scope) {
+  return sortRows(rows).map(row => {
+    const locked = isRowLockedByOther(row);
+    const disabledAttr = locked ? "disabled" : "";
+
+    return `
+      <tr>
+        <td class="date-cell">${date}</td>
+        <td><input ${disabledAttr} type="number" min="0" inputmode="numeric" data-date="${date}" data-row-id="${row.id}" data-field="containerCount" data-scope="${scope}" value="${escapeHtml(row.containerCount)}"></td>
+        <td>
+          <select ${disabledAttr} data-list-id="sizes" data-date="${date}" data-row-id="${row.id}" data-field="size" data-scope="${scope}">
+            ${renderSelectOptionsHtml("sizes", row.size)}
+          </select>
+        </td>
+        <td>
+          <select ${disabledAttr} data-list-id="places" data-date="${date}" data-row-id="${row.id}" data-field="place" data-scope="${scope}">
+            ${renderSelectOptionsHtml("places", row.place)}
+          </select>
+        </td>
+        <td>
+          <select ${disabledAttr} data-list-id="moves" data-date="${date}" data-row-id="${row.id}" data-field="move" data-scope="${scope}">
+            ${renderSelectOptionsHtml("moves", row.move)}
+          </select>
+        </td>
+        <td>
+          <select ${disabledAttr} data-list-id="agencies" data-date="${date}" data-row-id="${row.id}" data-field="agency" data-scope="${scope}">
+            ${renderSelectOptionsHtml("agencies", row.agency)}
+          </select>
+        </td>
+        <td>
+          <select ${disabledAttr} data-list-id="types" data-date="${date}" data-row-id="${row.id}" data-field="type" data-scope="${scope}">
+            ${renderSelectOptionsHtml("types", row.type)}
+          </select>
+        </td>
+        <td>
+          <select ${disabledAttr} data-list-id="clients" data-date="${date}" data-row-id="${row.id}" data-field="client" data-scope="${scope}">
+            ${renderSelectOptionsHtml("clients", row.client)}
+          </select>
+        </td>
+        <td><input ${disabledAttr} data-date="${date}" data-row-id="${row.id}" data-field="notes" data-scope="${scope}" value="${escapeHtml(row.notes)}" placeholder="${locked ? escapeHtml(getRowLockLabel(row)) : "اكتب ملاحظات"}"></td>
+        <td>${renderMetaCell(row)}</td>
+        <td>${renderTimeCell(row)}</td>
+        <td><button class="delete-btn" onclick="deleteRow('${date}', '${row.id}')" ${locked ? "disabled" : ""}>حذف</button></td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderSelectOptionsHtml(listId, currentValue) {
+  const merged = getMergedListOptions(listId);
+  const currentNorm = normalizeOptionValue(currentValue);
+  const currentCmp = currentNorm.toLocaleLowerCase("ar");
+
+  const mergedCmpSet = new Set(
+    merged.map(v => normalizeOptionValue(v).toLocaleLowerCase("ar"))
+  );
+  const mergedWithCurrent = [...merged.map(v => normalizeOptionValue(v)).filter(Boolean)];
+  if (currentCmp && !mergedCmpSet.has(currentCmp)) mergedWithCurrent.push(currentNorm);
+
+  // إزالة التكرار (مع مقارنة Arabic case-insensitive)
+  const unique = mergedWithCurrent.filter((opt, idx, arr) => {
+    const optCmp = normalizeOptionValue(opt).toLocaleLowerCase("ar");
+    return arr.findIndex(x => normalizeOptionValue(x).toLocaleLowerCase("ar") === optCmp) === idx;
+  });
+
+  return unique
+    .sort((a, b) => a.localeCompare(b, "ar", { numeric: true }))
+    .map(opt => {
+      const optCmp = normalizeOptionValue(opt).toLocaleLowerCase("ar");
+      const selected = currentCmp && optCmp === currentCmp ? "selected" : "";
+      return `<option value="${escapeHtml(opt)}" ${selected}>${escapeHtml(opt)}</option>`;
+    })
+    .join("");
+}
+
+function getMonthKey(date) {
+  return date.slice(0, 7);
+}
+
+function formatArabicMonth(monthKey) {
+  return new Date(monthKey + "-01T00:00:00").toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long"
+  });
+}
+
+function calculateMonthContainerTotal(monthKey) {
+  let total = 0;
+
+  Object.keys(dailyData).forEach(date => {
+    if (!date.startsWith(monthKey)) return;
+    (dailyData[date] || []).forEach(row => {
+      total += Number(row.containerCount || 0);
+    });
+  });
+
+  return total;
+}
+
+function getArchiveMonthKeys() {
+  const months = new Set(
+    getSortedDates()
+      .filter(date => date !== currentDate)
+      .map(date => getMonthKey(date))
+  );
+
+  const currentMonth = today.slice(0, 7);
+  return Array.from(months).sort((a, b) => {
+    if (a === currentMonth && b !== currentMonth) return -1;
+    if (b === currentMonth && a !== currentMonth) return 1;
+    return b.localeCompare(a);
+  });
+}
+
+function updateMonthSummary() {
+  const monthKey = currentSummaryMonth || getMonthKey(currentDate);
+  monthContainerTotal.textContent = String(calculateMonthContainerTotal(monthKey));
+  monthRangeLabel.textContent = "إجمالي شهر " + formatArabicMonth(monthKey);
+}
+
+function renderCurrentDate() {
+  const rows = ensureDateRows(currentDate);
+  currentDateTitle.textContent = "بيان التاريخ: " + currentDate;
+  currentTableBody.innerHTML = renderRows(rows, currentDate, "current");
+  if (!summaryMonthPicker.value) {
+    currentSummaryMonth = getMonthKey(currentDate);
+    summaryMonthPicker.value = currentSummaryMonth;
+  }
+  updateMonthSummary();
+}
+
+function getSortedDates() {
+  return Object.keys(dailyData).sort((a, b) => b.localeCompare(a));
+}
+
+function renderArchive() {
+  const months = getArchiveMonthKeys();
+
+  if (!months.length) {
+    archiveContainer.innerHTML = '<div class="empty-state">لا توجد أشهر محفوظة في الأرشيف حاليًا. كل البيانات المعروضة تخص التاريخ المفتوح فقط.</div>';
+    return;
+  }
+
+  archiveContainer.innerHTML = months.map(monthKey => {
+    const dates = getSortedDates().filter(date => {
+      if (date === currentDate || getMonthKey(date) !== monthKey) return false;
+      if (!archiveSearchTerm) return true;
+
+      const label = `${date} ${formatArabicDate(date)} ${formatArabicMonth(monthKey)}`.toLowerCase();
+      return label.includes(archiveSearchTerm);
+    });
+
+    if (!dates.length) {
+      return "";
+    }
+
+    const total = calculateMonthContainerTotal(monthKey);
+
+    return `
+      <article class="archive-month-card">
+        <div class="archive-month-head">
+          <div>
+            <h3 class="archive-month-title">أرشيف ${formatArabicMonth(monthKey)}</h3>
+            <div class="card-date">كل الأيام محفوظة داخل هذا الشهر وتُعرض عند الاختيار فقط</div>
+          </div>
+          <div class="archive-month-stats">
+            <span class="archive-stat">إجمالي الحاويات: ${total}</span>
+            <span class="archive-stat">عدد الأيام: ${dates.length}</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="archiveMonth-${monthKey}">اختر يومًا من هذا الشهر</label>
+          <select id="archiveMonth-${monthKey}" onchange="openArchiveDate(this.value)">
+            <option value="">اختر اليوم</option>
+            ${dates.map(date => `<option value="${date}">${date} - ${escapeHtml(formatArabicDate(date))}</option>`).join("")}
+          </select>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  if (!archiveContainer.innerHTML.trim()) {
+    archiveContainer.innerHTML = '<div class="empty-state">لا توجد نتائج مطابقة للبحث داخل الأرشيف.</div>';
+  }
+}
+
+function renderAll() {
+  renderCurrentDate();
+  renderArchive();
+}
+
+// Editing and sync helpers
+function openArchiveDate(date) {
+  if (!date) return;
+  focusDate(date);
+}
+
+function findRow(date, rowId) {
+  return (dailyData[date] || []).find(row => row.id === rowId);
+}
+
+function updateDateRowsFromDom(date) {
+  const inputs = document.querySelectorAll(`input[data-date="${date}"][data-field], select[data-date="${date}"][data-field]`);
+  const existingMap = new Map((dailyData[date] || []).map(row => [row.id, row]));
+  const rowMap = new Map();
+
+  inputs.forEach(input => {
+    const rowId = input.dataset.rowId;
+    const field = input.dataset.field;
+
+    if (!rowMap.has(rowId)) {
+      const existingRow = existingMap.get(rowId) || createRow({ id: rowId });
+      rowMap.set(rowId, { ...existingRow });
+    }
+
+    rowMap.get(rowId)[field] = input.value;
+  });
+
+  const rows = Array.from(rowMap.values());
+  dailyData[date] = rows.length ? sortRows(rows) : [createRow()];
+  saveDraft(date);
+}
+
+function scheduleAutoSave(date) {
+  clearTimeout(saveTimers[date]);
+  if (date === currentDate) {
+    setCurrentStatus("هناك تعديلات لم تُرفع بعد...");
+  }
+  saveTimers[date] = setTimeout(() => saveDate(date, false), 700);
+}
+
+function buildRowPayload(row) {
+  return {
+    id: row.id,
+    order: row.order,
+    containerCount: row.containerCount || "",
+    size: row.size || "",
+    place: row.place || "",
+    move: row.move || "",
+    agency: row.agency || "",
+    type: row.type || "",
+    client: row.client || "",
+    notes: row.notes || "",
+    updatedAt: firebase.database.ServerValue.TIMESTAMP,
+    updatedBy: getUserLabel(),
+    lock: row.lock || null
+  };
+}
+
+function saveSingleRow(date, row) {
+  const rowRef = db.ref("daily/" + date + "/rows/" + row.id);
+  const localBaseUpdatedAt = row.baseUpdatedAt || null;
+  let conflictDetected = false;
+
+  return rowRef.transaction(currentRow => {
+    if (
+      currentRow &&
+      currentRow.updatedAt &&
+      localBaseUpdatedAt &&
+      Number(currentRow.updatedAt) !== Number(localBaseUpdatedAt)
+    ) {
+      conflictDetected = true;
+      return;
+    }
+
+    return buildRowPayload(row);
+  }, undefined, false).then(result => {
+    if (!result.committed || conflictDetected) {
+      return { ok: false, rowId: row.id };
+    }
+    return { ok: true, rowId: row.id };
+  }).catch(() => ({ ok: false, rowId: row.id }));
+}
+
+function saveRows(date, rows, showAlert = false, forceSave = false) {
+  clearTimeout(saveTimers[date]);
+
+  if (!forceSave && !dirtyDates[date]) {
+    return Promise.resolve();
+  }
+
+  if (savingDates[date]) {
+    pendingImmediateSaves[date] = true;
+    return Promise.resolve();
+  }
+
+  savingDates[date] = true;
+  if (date === currentDate) {
+    setCurrentStatus("جارٍ حفظ بيانات " + date + "...");
+  }
+
+  return Promise.all(sortRows(rows).map(row => saveSingleRow(date, row)))
+    .then(results => {
+      const conflicts = results.filter(result => !result.ok);
+      if (conflicts.length) {
+        throw new Error("conflict");
+      }
+
+      clearDateDirty(date);
+      clearDraft(date);
+      if (date === currentDate) {
+        setCurrentStatus("تم الحفظ تلقائيًا في " + new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }));
+      }
+      if (showAlert) {
+        alert("تم حفظ بيانات " + date + " بنجاح");
+      }
+    })
+    .catch(error => {
+      const isConflict = error && error.message === "conflict";
+      if (date === currentDate) {
+        setCurrentStatus(
+          isConflict
+            ? "حدث تعارض لأن السطر تغيّر عند مستخدم آخر. تم الاحتفاظ بتعديلك محليًا حتى تراجع آخر نسخة."
+            : "تعذر الحفظ على الخادم الآن، لكن البيانات محفوظة محليًا.",
+          true
+        );
+      }
+      if (showAlert) {
+        alert(
+          isConflict
+            ? "حدث تعارض لأن السطر تغيّر عند مستخدم آخر. راجع البيانات ثم أعد الحفظ."
+            : "تعذر الحفظ على الخادم الآن، لكن البيانات محفوظة محليًا."
+        );
+      }
+    })
+    .finally(() => {
+      savingDates[date] = false;
+      if (pendingImmediateSaves[date]) {
+        delete pendingImmediateSaves[date];
+        saveDate(date, false);
+      }
+    });
+}
+
+function requestImmediateSave(date, rowId) {
+  clearTimeout(saveTimers[date]);
+  const row = findRow(date, rowId);
+  if (!row) return Promise.resolve();
+  return saveRows(date, [row], false, true);
+}
+
+function acquireRowLock(date, rowId) {
+  const rowRef = db.ref("daily/" + date + "/rows/" + rowId + "/lock");
+  const now = Date.now();
+
+  return rowRef.transaction(currentLock => {
+    if (!currentLock || !currentLock.expiresAt || currentLock.expiresAt < now || currentLock.userId === getUserId()) {
+      return {
+        userId: getUserId(),
+        userName: getUserLabel(),
+        expiresAt: now + LOCK_DURATION_MS
+      };
+    }
+    return;
+  }, undefined, false).then(result => {
+    if (!result.committed) {
+      const owner = result.snapshot && result.snapshot.val() ? result.snapshot.val().userName || "مستخدم آخر" : "مستخدم آخر";
+      throw new Error("السطر قيد التعديل بواسطة " + owner);
+    }
+
+    activeLocks[rowId] = { date, rowId };
+    startLockRenewal(date, rowId);
+  });
+}
+
+function startLockRenewal(date, rowId) {
+  stopLockRenewal(rowId);
+  lockIntervals[rowId] = setInterval(() => {
+    const lockRef = db.ref("daily/" + date + "/rows/" + rowId + "/lock");
+    lockRef.transaction(lock => {
+      if (!lock) return lock;
+      if (lock.userId !== getUserId()) return lock;
+      return {
+        userId: getUserId(),
+        userName: getUserLabel(),
+        expiresAt: Date.now() + LOCK_DURATION_MS
+      };
+    }, undefined, false);
+  }, LOCK_RENEW_MS);
+}
+
+function stopLockRenewal(rowId) {
+  if (lockIntervals[rowId]) {
+    clearInterval(lockIntervals[rowId]);
+    delete lockIntervals[rowId];
+  }
+}
+
+function releaseRowLock(date, rowId) {
+  stopLockRenewal(rowId);
+  delete activeLocks[rowId];
+
+  return db.ref("daily/" + date + "/rows/" + rowId + "/lock").transaction(lock => {
+    if (lock && lock.userId === getUserId()) {
+      return null;
+    }
+    return lock;
+  }, undefined, false).catch(() => {});
+}
+
+function ensureRowLock(date, rowId) {
+  if (activeLocks[rowId]) {
+    return Promise.resolve();
+  }
+
+  const row = findRow(date, rowId);
+  if (row && isRowLockedByOther(row)) {
+    return Promise.reject(new Error(getRowLockLabel(row)));
+  }
+
+  return acquireRowLock(date, rowId);
+}
+
+function handleInput(event) {
+  const input = event.target;
+  if (!input.matches('input[data-date][data-field]')) return;
+
+  const date = input.dataset.date;
+  const rowId = input.dataset.rowId;
+  const field = input.dataset.field;
+
+  ensureDateRows(date);
+  const row = findRow(date, rowId);
+  if (!row) return;
+
+  ensureRowLock(date, rowId).then(() => {
+    row[field] = input.value;
+    markDateDirty(date);
+    saveDraft(date);
+    scheduleAutoSave(date);
+  }).catch(error => {
+    setCurrentStatus(error.message || "تعذر تعديل هذا السطر الآن.", true);
+    renderAll();
+    input.blur();
+  });
+}
+
+function handleCellCommit(event) {
+  const input = event.target;
+  if (!input.matches('input[data-date][data-field], select[data-date][data-field]')) return;
+
+  const date = input.dataset.date;
+  const rowId = input.dataset.rowId;
+  const field = input.dataset.field;
+
+  ensureDateRows(date);
+  const row = findRow(date, rowId);
+  if (!row) return;
+  const previousValue = row[field] || "";
+  const nextValue = input.value;
+
+  ensureRowLock(date, rowId).then(() => {
+    row[field] = nextValue;
+    markDateDirty(date);
+    saveDraft(date);
+    saveSharedOptionForField(field, nextValue);
+    return requestImmediateSave(date, rowId).then(() => {
+      if (normalizeOptionValue(previousValue) !== normalizeOptionValue(nextValue)) {
+        return logChange("row_update", {
+          date,
+          rowId,
+          field,
+          message: `تم تعديل ${FIELD_LABELS[field] || field} في ${date} من "${previousValue || "-"}" إلى "${nextValue || "-"}"`
+        });
+      }
+    });
+  }).catch(error => {
+    setCurrentStatus(error.message || "تعذر حفظ هذا السطر الآن.", true);
+    renderAll();
+  }).finally(() => {
+    if (activeLocks[rowId]) {
+      releaseRowLock(date, rowId);
+    }
+  });
+}
+
+function handleCellBlur(event) {
+  const input = event.target;
+  if (!input.matches('input[data-date][data-field], select[data-date][data-field]')) return;
+
+  const date = input.dataset.date;
+  const rowId = input.dataset.rowId;
+  setTimeout(() => {
+    if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.rowId === rowId) {
+      return;
+    }
+    releaseRowLock(date, rowId);
+  }, 50);
+}
+
+function normalizeSnapshotData(snapshotValue) {
+  const normalized = {};
+  if (!snapshotValue || typeof snapshotValue !== "object") {
+    return normalized;
+  }
+
+  Object.keys(snapshotValue).forEach(date => {
+    const dateNode = snapshotValue[date];
+
+    if (Array.isArray(dateNode)) {
+      normalized[date] = dateNode.map((row, index) => normalizeRow(row, index));
+      return;
+    }
+
+    if (dateNode && dateNode.rows && typeof dateNode.rows === "object") {
+      normalized[date] = Object.keys(dateNode.rows).map((rowId, index) => normalizeRow({ ...dateNode.rows[rowId], id: rowId }, index));
+    }
+  });
+
+  return normalized;
+}
+
+function getActiveEditingInfo() {
+  const el = document.activeElement;
+  if (el && el.matches('input[data-date][data-field], select[data-date][data-field]')) {
+    return {
+      date: el.dataset.date,
+      rowId: el.dataset.rowId,
+      field: el.dataset.field
+    };
+  }
+  return null;
+}
+
+function mergeServerDataPreservingEditing(serverData, editingInfo) {
+  const merged = { ...dailyData };
+
+  Object.keys(serverData).forEach(date => {
+    if (!editingInfo || date !== editingInfo.date) {
+      merged[date] = serverData[date];
+      return;
+    }
+
+    const localRows = dailyData[date] || [];
+    const localMap = new Map(localRows.map(row => [row.id, row]));
+    const serverRows = serverData[date] || [];
+
+    const combined = serverRows.map(serverRow => {
+      if (serverRow.id === editingInfo.rowId && localMap.has(serverRow.id)) {
+        return localMap.get(serverRow.id);
+      }
+      return serverRow;
+    });
+
+    localRows.forEach(localRow => {
+      if (!combined.some(row => row.id === localRow.id)) {
+        combined.push(localRow);
+      }
+    });
+
+    merged[date] = sortRows(combined);
+  });
+
+  return merged;
+}
+
+function renderPrintableRows(date) {
+  return sortRows(ensureDateRows(date)).map(row => `
+    <tr>
+      <td>${escapeHtml(date)}</td>
+      <td>${escapeHtml(row.containerCount)}</td>
+      <td>${escapeHtml(row.size)}</td>
+      <td>${escapeHtml(row.place)}</td>
+      <td>${escapeHtml(row.move)}</td>
+      <td>${escapeHtml(row.agency)}</td>
+      <td>${escapeHtml(row.type)}</td>
+      <td>${escapeHtml(row.client)}</td>
+      <td>${escapeHtml(row.notes)}</td>
+    </tr>
+  `).join("");
+}
+
+function refreshBaseUpdatedAtFromServer(serverData) {
+  Object.keys(serverData).forEach(date => {
+    const localRows = dailyData[date] || [];
+    const serverMap = new Map((serverData[date] || []).map(row => [row.id, row]));
+
+    localRows.forEach(row => {
+      const serverRow = serverMap.get(row.id);
+      if (serverRow) {
+        row.baseUpdatedAt = serverRow.updatedAt || null;
+        row.updatedAt = serverRow.updatedAt || row.updatedAt;
+        row.updatedBy = serverRow.updatedBy || row.updatedBy;
+        row.lock = serverRow.lock || null;
+      }
+    });
+  });
+}
+
+function mergeLocalDraftsFallback() {
+  Object.keys(localStorage).forEach(key => {
+    if (!key.startsWith("dailyDraft-")) return;
+    const date = key.replace("dailyDraft-", "");
+    const draft = readDraft(date);
+    if (Array.isArray(draft) && draft.length) {
+      dailyData[date] = draft;
+    }
+  });
+}
+
+function loadSharedLists() {
+  db.ref("sharedLists").on("value", snap => {
+    const raw = snap.val() || {};
+    const nextOptions = {};
+
+    Object.keys(DEFAULT_LIST_OPTIONS).forEach(listId => {
+      const values = raw[listId] && typeof raw[listId] === "object"
+        ? Object.values(raw[listId]).map(normalizeOptionValue).filter(Boolean)
+        : [];
+      nextOptions[listId] = values;
+    });
+
+    sharedListOptions = nextOptions;
+    renderAllSharedDatalists();
+    cleanupBrokenSharedLists(raw);
+  }, () => {
+    sharedListOptions = {};
+    renderAllSharedDatalists();
+  });
+}
+
+function loadChangeLog() {
+  db.ref("changeLog").limitToLast(40).on("value", snap => {
+    const raw = snap.val() || {};
+    changeLogEntries = Object.keys(raw)
+      .map(key => ({ id: key, ...raw[key] }))
+      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    renderChangeLog();
+  }, () => {
+    changeLogEntries = [];
+    renderChangeLog();
+  });
+}
+
+function loadAllData() {
+  db.ref("daily").on("value", snap => {
+    const serverData = normalizeSnapshotData(snap.val());
+    const editingInfo = getActiveEditingInfo();
+
+    if (editingInfo) {
+      dailyData = mergeServerDataPreservingEditing(serverData, editingInfo);
+      refreshBaseUpdatedAtFromServer(serverData);
+      Object.keys(serverData).forEach(date => {
+        if (!dirtyDates[date]) {
+          clearDraft(date);
+        }
+      });
+      ensureDateRows(currentDate);
+      renderArchive();
+      updateMonthSummary();
+      setCurrentStatus("تم استقبال تحديثات جديدة بدون المساس بالخلية الجاري تعديلها.");
+      return;
+    }
+
+    dailyData = serverData;
+    refreshBaseUpdatedAtFromServer(serverData);
+    Object.keys(serverData).forEach(date => {
+      if (!dirtyDates[date]) {
+        clearDraft(date);
+      }
+    });
+    ensureDateRows(currentDate);
+    renderAll();
+    setCurrentStatus("تم تحميل البيانات وتحديثها مباشرة.");
+  }, () => {
+    dailyData = {};
+    mergeLocalDraftsFallback();
+    ensureDateRows(currentDate);
+    renderAll();
+    setCurrentStatus("تعذر تحميل البيانات من الخادم، تم فتح النسخ المحلية المتاحة.", true);
+  });
+}
+
+function focusDate(date) {
+  updateDateRowsFromDom(currentDate);
+  currentDate = date;
+  datePicker.value = date;
+  renderAll();
+  setCurrentStatus("تم فتح تاريخ " + date);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openSelectedDate() {
+  const selectedDate = datePicker.value || today;
+  focusDate(selectedDate);
+}
+
+function syncDateFromDom(date) {
+  updateDateRowsFromDom(date);
+  ensureDateRows(date);
+  saveDraft(date);
+}
+
+function addRow(date) {
+  syncDateFromDom(date);
+  const newRow = createRow({ order: Date.now() + Math.random() });
+  dailyData[date].push(newRow);
+  markDateDirty(date);
+  saveDraft(date);
+  renderAll();
+  setCurrentStatus("تمت إضافة سطر جديد.");
+  logChange("row_add", {
+    date,
+    rowId: newRow.id,
+    message: `تمت إضافة سطر جديد في ${date}`
+  });
+}
+
+function deleteRow(date, rowId) {
+  const row = findRow(date, rowId);
+  if (row && isRowLockedByOther(row)) {
+    setCurrentStatus("لا يمكن حذف هذا السطر لأنه مقفول بواسطة مستخدم آخر.", true);
+    return;
+  }
+
+  syncDateFromDom(date);
+  dailyData[date] = (dailyData[date] || []).filter(item => item.id !== rowId);
+  if (!dailyData[date].length) {
+    dailyData[date] = [createRow()];
+  }
+
+  markDateDirty(date);
+  saveDraft(date);
+  renderAll();
+
+  db.ref("daily/" + date + "/rows/" + rowId).remove()
+    .then(() => {
+      setCurrentStatus("تم حذف السطر.");
+      return logChange("row_delete", {
+        date,
+        rowId,
+        message: `تم حذف سطر من ${date}`
+      });
+    })
+    .catch(() => setCurrentStatus("تعذر حذف السطر من الخادم الآن، لكن التعديل محفوظ محليًا.", true));
+}
+
+function deleteDay(date) {
+  if (!window.confirm("هل أنت متأكد من حذف يوم " + date + " بالكامل؟")) return;
+
+  db.ref("daily/" + date).remove()
+    .then(() => {
+      delete dailyData[date];
+      clearDateDirty(date);
+      clearDraft(date);
+      if (currentDate === date) {
+        currentDate = today;
+        datePicker.value = currentDate;
+      }
+      ensureDateRows(currentDate);
+      renderAll();
+      setCurrentStatus("تم حذف اليوم " + date + " بالكامل.");
+      return logChange("day_delete", {
+        date,
+        message: `تم حذف يوم ${date} بالكامل`
+      });
+    })
+    .catch(() => setCurrentStatus("تعذر حذف اليوم الآن.", true));
+}
+
+function saveDate(date, showAlert = false) {
+  syncDateFromDom(date);
+  return saveRows(date, ensureDateRows(date), showAlert, showAlert);
+}
+
+async function printDate(date) {
+  syncDateFromDom(date);
+  await saveDate(date, false);
+  window.location.href = "print-daily.html?date=" + encodeURIComponent(date);
+}
+
+function legacyDownloadJsonFile(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function legacyExportCurrentDateJson() {
+  syncDateFromDom(currentDate);
+  legacyDownloadJsonFile(
+    "daily-" + currentDate + ".json",
+    {
+      date: currentDate,
+      exportedAt: new Date().toISOString(),
+      rows: sortRows(ensureDateRows(currentDate))
+    }
+  );
+  setCurrentStatus("تم تصدير بيانات اليوم الحالي.");
+}
+
+function legacyExportSelectedMonthJson() {
+  const monthKey = currentSummaryMonth || getMonthKey(currentDate);
+  const dates = getSortedDates().filter(date => getMonthKey(date) === monthKey);
+
+  const payload = {
+    month: monthKey,
+    exportedAt: new Date().toISOString(),
+    totalContainers: calculateMonthContainerTotal(monthKey),
+    dates: dates.map(date => ({
+      date,
+      rows: sortRows(ensureDateRows(date))
+    }))
+  };
+
+  legacyDownloadJsonFile("daily-month-" + monthKey + ".json", payload);
+  setCurrentStatus("تم تصدير بيانات الشهر " + monthKey + ".");
+}
+
+function formatCsvCell(value) {
+  const normalized = String(value ?? "").replace(/\r?\n/g, " ").trim();
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function buildCsvContent(headers, rows) {
+  const lines = [
+    headers.map(formatCsvCell).join(","),
+    ...rows.map(row => row.map(formatCsvCell).join(","))
+  ];
+  return "\uFEFF" + lines.join("\r\n");
+}
+
+function downloadCsvFile(filename, headers, rows) {
+  const blob = new Blob([buildCsvContent(headers, rows)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function getExportRow(date, row) {
+  return [
+    date,
+    row.containerCount || "",
+    row.size || "",
+    row.place || "",
+    row.move || "",
+    row.agency || "",
+    row.type || "",
+    row.client || "",
+    row.notes || "",
+    row.updatedBy || "",
+    formatTimestamp(row.updatedAt)
+  ];
+}
+
+function exportCurrentDate() {
+  syncDateFromDom(currentDate);
+  const rows = sortRows(ensureDateRows(currentDate)).map(row => getExportRow(currentDate, row));
+  downloadCsvFile(
+    "daily-" + currentDate + ".csv",
+    ["التاريخ", "عدد الحاويات", "الحجم", "المكان", "مكان النقلة", "التوكيل", "النوع", "العميل", "ملاحظات", "آخر تعديل بواسطة", "وقت آخر تعديل"],
+    rows
+  );
+  setCurrentStatus("تم تصدير بيانات اليوم الحالي بصيغة CSV.");
+}
+
+function exportSelectedMonth() {
+  const monthKey = currentSummaryMonth || getMonthKey(currentDate);
+  const dates = getSortedDates().filter(date => getMonthKey(date) === monthKey);
+  const rows = [];
+
+  dates.forEach(date => {
+    sortRows(ensureDateRows(date)).forEach(row => {
+      rows.push(getExportRow(date, row));
+    });
+  });
+
+  downloadCsvFile(
+    "daily-month-" + monthKey + ".csv",
+    ["التاريخ", "عدد الحاويات", "الحجم", "المكان", "مكان النقلة", "التوكيل", "النوع", "العميل", "ملاحظات", "آخر تعديل بواسطة", "وقت آخر تعديل"],
+    rows
+  );
+  setCurrentStatus("تم تصدير بيانات الشهر " + monthKey + " بصيغة CSV.");
+}
+
+function ensureExcelReady() {
+  if (typeof XLSX === "undefined") {
+    setCurrentStatus("تعذر تحميل مكتبة Excel الآن. جرّب مرة أخرى بعد التأكد من الاتصال بالإنترنت.", true);
+    return false;
+  }
+  return true;
+}
+
+function buildExcelRows(rows) {
+  return rows.map(row => ({
+    "التاريخ": row[0],
+    "عدد الحاويات": row[1],
+    "الحجم": row[2],
+    "المكان": row[3],
+    "مكان النقلة": row[4],
+    "التوكيل": row[5],
+    "النوع": row[6],
+    "العميل": row[7],
+    "ملاحظات": row[8],
+    "آخر تعديل بواسطة": row[9],
+    "وقت آخر تعديل": row[10]
+  }));
+}
+
+function writeExcelFile(filename, sheets) {
+  if (!ensureExcelReady()) return;
+
+  const workbook = XLSX.utils.book_new();
+  sheets.forEach(sheet => {
+    const worksheet = XLSX.utils.json_to_sheet(sheet.rows);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name.slice(0, 31));
+  });
+
+  XLSX.writeFile(workbook, filename, { compression: true });
+}
+
+function exportCurrentDateExcel() {
+  syncDateFromDom(currentDate);
+  const rows = sortRows(ensureDateRows(currentDate)).map(row => getExportRow(currentDate, row));
+  writeExcelFile("daily-" + currentDate + ".xlsx", [
+    {
+      name: currentDate,
+      rows: buildExcelRows(rows)
+    }
+  ]);
+  setCurrentStatus("تم تصدير بيانات اليوم الحالي بصيغة Excel.");
+}
+
+function exportSelectedMonthExcel() {
+  const monthKey = currentSummaryMonth || getMonthKey(currentDate);
+  const dates = getSortedDates().filter(date => getMonthKey(date) === monthKey);
+  const allRows = [];
+
+  dates.forEach(date => {
+    sortRows(ensureDateRows(date)).forEach(row => {
+      allRows.push(getExportRow(date, row));
+    });
+  });
+
+  writeExcelFile("daily-month-" + monthKey + ".xlsx", [
+    {
+      name: monthKey,
+      rows: buildExcelRows(allRows)
+    }
+  ]);
+  setCurrentStatus("تم تصدير بيانات الشهر " + monthKey + " بصيغة Excel.");
+}
+
+async function saveVisibleDatesBeforeLeave() {
+  const dates = getSortedDates();
+  for (const date of dates) {
+    updateDateRowsFromDom(date);
+  }
+  await Promise.all(dates.map(date => saveDate(date, false)));
+}
+
+async function logout() {
+  await saveVisibleDatesBeforeLeave();
+  firebase.auth().signOut().then(() => {
+    window.location = "index.html";
+  });
+}
+
+async function goBack() {
+  await saveVisibleDatesBeforeLeave();
+  window.location = "dashboard.html";
+}
+
+async function openSharedLists() {
+  await saveVisibleDatesBeforeLeave();
+  window.location = "shared-lists.html";
+}
+
+document.addEventListener("input", handleInput);
+document.addEventListener("change", handleCellCommit);
+document.addEventListener("focusout", handleCellBlur);
+summaryMonthPicker.addEventListener("change", event => {
+  currentSummaryMonth = event.target.value || getMonthKey(currentDate);
+  updateMonthSummary();
+});
+archiveSearchInput.addEventListener("input", event => {
+  archiveSearchTerm = (event.target.value || "").trim().toLowerCase();
+  renderArchive();
+});
+
+window.addEventListener("beforeunload", () => {
+  Object.keys(activeLocks).forEach(rowId => {
+    const lockInfo = activeLocks[rowId];
+    if (lockInfo) {
+      releaseRowLock(lockInfo.date, rowId);
+    }
+  });
+
+  getSortedDates().forEach(date => {
+    updateDateRowsFromDom(date);
+    saveDraft(date);
+  });
+});
+
+renderAllSharedDatalists();
+loadSharedLists();
+loadChangeLog();
+loadAllData();
+</script>
+<datalist id="sizes"></datalist>
+<datalist id="places"></datalist>
+<datalist id="moves"></datalist>
+<datalist id="agencies"></datalist>
+<datalist id="types"></datalist>
+<datalist id="clients"></datalist>
+
+<script type="module">
+import { mountAppNav } from "./js/app-nav.js";
+mountAppNav("#global-app-nav", "daily");
+</script>
+</body>
+</html>

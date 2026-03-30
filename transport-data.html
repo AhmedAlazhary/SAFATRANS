@@ -770,13 +770,31 @@ async function onDateChange() {
 
 // إضافة صف جديد في بيانات النقلات
 function addNewTransportRow() {
-  const newRow = transportSystem.createNewTransportRow({
-    date: selectedDate
-  });
+  console.log('addNewTransportRow called');
+  console.log('transportSystem:', transportSystem);
+  console.log('selectedDate:', selectedDate);
   
-  currentTransportData.push(newRow);
-  renderTransportTable();
-  showSuccess('تم إضافة صف جديد');
+  if (!transportSystem) {
+    showError('النظام لم يتم تهيئته بعد، يرجى الانتظار');
+    return;
+  }
+  
+  try {
+    const newRow = transportSystem.createNewTransportRow({
+      date: selectedDate
+    });
+    
+    console.log('New row created:', newRow);
+    
+    currentTransportData.push(newRow);
+    renderTransportTable();
+    updateSummary();
+    
+    showSuccess('تم إضافة صف جديد');
+  } catch (error) {
+    console.error('Error adding new row:', error);
+    showError('فشل في إضافة صف جديد: ' + error.message);
+  }
 }
 
 // عرض جدول بيانات النقلات
@@ -996,6 +1014,20 @@ async function deleteTransportRow(id) {
 
 // حفظ جميع بيانات النقلات
 async function saveAllTransportData() {
+  console.log('saveAllTransportData called');
+  console.log('transportSystem:', transportSystem);
+  console.log('currentTransportData:', currentTransportData);
+  
+  if (!transportSystem) {
+    showError('النظام لم يتم تهيئته بعد، يرجى الانتظار');
+    return;
+  }
+  
+  if (currentTransportData.length === 0) {
+    showError('لا توجد بيانات للحفظ');
+    return;
+  }
+  
   try {
     showInfo('جاري الحفظ...');
     
@@ -1222,6 +1254,14 @@ function printReport() {
 }
 
 function exportToExcel() {
+  console.log('exportToExcel called');
+  console.log('currentTransportData:', currentTransportData);
+  
+  if (!currentTransportData || currentTransportData.length === 0) {
+    showError('لا توجد بيانات للتصدير');
+    return;
+  }
+  
   try {
     showInfo('جاري تصدير البيانات...');
     

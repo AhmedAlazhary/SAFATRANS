@@ -231,22 +231,27 @@ class TransportDataSystem {
   }
 
   /**
-   * الحصول على رقم التسوية التالي للعميل
+   * الحصول على رقم التسوية التالي للعميل بناءً على البيانات الموجودة
    */
-  async getNextSettlementNumber(customerName, year = new Date().getFullYear()) {
+  async getNextSettlementNumber(customerName) {
     try {
-      const customerSettlements = this.settlementsData.filter(settlement => 
-        settlement.customerName === customerName && 
-        settlement.year === year
-      );
+      if (!customerName) return 1;
       
-      if (customerSettlements.length === 0) {
-        return 1; // أول تسوية للعميل في السنة
+      // البحث في جميع بيانات النقلات لهذا العميل
+      const customerTransports = this.transportData.filter(t => t.customerName === customerName);
+      
+      if (customerTransports.length === 0) {
+        return 1;
       }
       
-      // البحث عن أكبر رقم تسوية للعميل
-      const maxSettlement = Math.max(...customerSettlements.map(s => s.settlementNumber));
-      return maxSettlement + 1;
+      // الحصول على أكبر رقم تسوية موجود حالياً
+      const settlementNumbers = customerTransports
+        .map(t => parseInt(t.settlementNumber))
+        .filter(n => !isNaN(n));
+        
+      if (settlementNumbers.length === 0) return 1;
+      
+      return Math.max(...settlementNumbers) + 1;
       
     } catch (error) {
       console.error('Error getting next settlement number:', error);

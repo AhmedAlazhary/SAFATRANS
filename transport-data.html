@@ -1222,19 +1222,288 @@ function printReport() {
 }
 
 function exportToExcel() {
-  // سيتم تنفيذها لاحقًا
-  console.log('Export to Excel');
+  try {
+    showInfo('جاري تصدير البيانات...');
+    
+    // تحضير البيانات للتصدير
+    const exportData = currentTransportData.map(row => ({
+      'التاريخ': row.date || '',
+      'رقم التسوية': row.settlementNumber || '',
+      'المسلسل': row.settlementSequence || '',
+      'العميل': row.customerName || '',
+      'نوع الإذن': row.permitType || '',
+      'رقم الإذن': row.permitNumber || '',
+      'نوع البوليصة': row.billType || '',
+      'رقم البوليصة': row.billNumber || '',
+      'A/D': row.transportType || '',
+      'مكان التحميل': row.loadingLocation || '',
+      'مكان التعتيق': row.dischargeLocation || '',
+      'الحجم': row.containerSize || '',
+      'التوكيل': row.agencyName || '',
+      'السائق': row.driverName || '',
+      'رقم السيارة': row.carNumber || '',
+      'رقم الحاوية': row.containerNumber || '',
+      'عدد الحاويات': row.containerCount || 1,
+      'العهدة': row.deposit || 0,
+      'النولون': row.totalFreight || 0,
+      'المصروفات': row.expenses || 0,
+      'قيمة الفاتورة': row.invoiceValue || 0,
+      'مصروف العميل': row.customerExpenses || 0,
+      'الضريبة': row.vat || 0,
+      'الربح': row.transportProfit || 0,
+      'الباقي': row.remaining || 0,
+      'القومسيون': row.commission || 0,
+      'النولون الصافي': row.netFreight || 0,
+      'طريقة الصرف': row.paymentMethod || '',
+      'أخرى': row.other || ''
+    }));
+    
+    // تحويل إلى CSV
+    const headers = Object.keys(exportData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row => 
+        headers.map(header => `"${row[header] || ''}"`).join(',')
+      )
+    ].join('\n');
+    
+    // إنشاء ملف وتحميله
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `بيانات_النقلات_${selectedDate}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showSuccess('تم تصدير البيانات بنجاح');
+  } catch (error) {
+    console.error('Error exporting to Excel:', error);
+    showError('فشل في تصدير البيانات: ' + error.message);
+  }
+}
+
+function generateComprehensiveReport() {
+  try {
+    showInfo('جاري إنشاء التقرير الشامل...');
+    
+    const fromDate = document.getElementById('reportFromDate').value;
+    const toDate = document.getElementById('reportToDate').value;
+    
+    if (!fromDate || !toDate) {
+      showError('يرجى تحديد فترة التقرير');
+      return;
+    }
+    
+    // تصفية البيانات حسب الفترة
+    const filteredData = transportSystem.transportData.filter(transport => 
+      transport.date >= fromDate && transport.date <= toDate
+    );
+    
+    // إنشاء التقرير
+    const report = {
+      period: `من ${fromDate} إلى ${toDate}`,
+      summary: transportSystem.calculateDailySummary(filteredData),
+      data: filteredData,
+      receipts: transportSystem.receiptsData.filter(receipt => 
+        receipt.date >= fromDate && receipt.date <= toDate
+      ),
+      generatedAt: new Date().toISOString()
+    };
+    
+    // عرض التقرير
+    const reportDiv = document.getElementById('comprehensiveReport');
+    reportDiv.innerHTML = `
+      <div class="card">
+        <h4>ملخص التقرير</h4>
+        <p><strong>الفترة:</strong> ${report.period}</p>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-value">${report.summary.totalTransports}</div>
+            <div class="summary-label">إجمالي النقلات</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">${report.summary.totalFreight.toFixed(2)}</div>
+            <div class="summary-label">إجمالي النولون</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">${report.summary.totalExpenses.toFixed(2)}</div>
+            <div class="summary-label">إجمالي المصروفات</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">${report.summary.totalProfit.toFixed(2)}</div>
+            <div class="summary-label">إجمالي الأرباح</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    showSuccess('تم إنشاء التقرير بنجاح');
+  } catch (error) {
+    console.error('Error generating report:', error);
+    showError('فشل في إنشاء التقرير: ' + error.message);
+  }
+}
+
+function printReport() {
+  try {
+    showInfo('جاري تجهيز الطباعة...');
+    
+    // إنشاء محتوى للطباعة
+    const printContent = document.getElementById('comprehensiveReport').innerHTML;
+    const printWindow = window.open('', '_blank');
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>تقرير بيانات النقلات</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; direction: rtl; }
+          .card { border: 1px solid #ddd; padding: 20px; margin: 10px 0; }
+          .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+          .summary-item { text-align: center; padding: 10px; border: 1px solid #eee; }
+          .summary-value { font-size: 1.2rem; font-weight: bold; }
+          .summary-label { font-size: 0.9rem; color: #666; }
+          @media print { body { margin: 10px; } }
+        </style>
+      </head>
+      <body>
+        <h1>تقرير بيانات النقلات</h1>
+        ${printContent}
+        <p style="margin-top: 30px; text-align: center;">
+          تم الطباعة في: ${new Date().toLocaleString('ar-EG')}
+        </p>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.print();
+    
+    showSuccess('تم إرسال التقرير للطباعة');
+  } catch (error) {
+    console.error('Error printing report:', error);
+    showError('فشل في طباعة التقرير: ' + error.message);
+  }
 }
 
 function generateSettlementReport() {
-  // سيتم تنفيذها لاحقًا
-  console.log('Generate settlement report');
+  try {
+    showInfo('جاري إنشاء تقرير التسويات...');
+    
+    const customerName = document.getElementById('settlementCustomer').value;
+    const year = document.getElementById('settlementYear').value;
+    
+    if (!customerName) {
+      showError('يرجى إدخال اسم العميل');
+      return;
+    }
+    
+    // الحصول على ملخص التسويات
+    const settlements = transportSystem.getCustomerSettlementSummary(customerName, parseInt(year));
+    
+    // عرض التقرير
+    const reportDiv = document.getElementById('settlementsReport');
+    reportDiv.innerHTML = `
+      <div class="card">
+        <h4>تقرير تسويات العميل: ${customerName} - ${year}</h4>
+        ${settlements.length === 0 ? 
+          '<p>لا توجد تسويات لهذا العميل في هذه السنة</p>' :
+          settlements.map(settlement => `
+            <div class="card" style="margin: 10px 0; padding: 15px;">
+              <h5>تسوية رقم: ${settlement.settlementNumber}</h5>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <div class="summary-value">${settlement.totalTransports}</div>
+                  <div class="summary-label">عدد النقلات</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${settlement.totalAmount.toFixed(2)}</div>
+                  <div class="summary-label">إجمالي المبلغ</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${settlement.totalExpenses.toFixed(2)}</div>
+                  <div class="summary-label">إجمالي المصروفات</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${settlement.totalProfit.toFixed(2)}</div>
+                  <div class="summary-label">إجمالي الأرباح</div>
+                </div>
+              </div>
+            </div>
+          `).join('')
+        }
+      </div>
+    `;
+    
+    showSuccess('تم إنشاء تقرير التسويات بنجاح');
+  } catch (error) {
+    console.error('Error generating settlement report:', error);
+    showError('فشل في إنشاء تقرير التسويات: ' + error.message);
+  }
 }
 
 function exportSettlementReport() {
-  // سيتم تنفيذها لاحقًا
-  console.log('Export settlement report');
+  try {
+    showInfo('جاري تصدير تقرير التسويات...');
+    
+    const customerName = document.getElementById('settlementCustomer').value;
+    const year = document.getElementById('settlementYear').value;
+    
+    if (!customerName) {
+      showError('يرجى إدخال اسم العميل أولاً');
+      return;
+    }
+    
+    const settlements = transportSystem.getCustomerSettlementSummary(customerName, parseInt(year));
+    
+    // تحضير البيانات للتصدير
+    const exportData = settlements.map(settlement => ({
+      'رقم التسوية': settlement.settlementNumber,
+      'العميل': settlement.customerName,
+      'السنة': settlement.year,
+      'عدد النقلات': settlement.totalTransports,
+      'إجمالي المبلغ': settlement.totalAmount.toFixed(2),
+      'إجمالي النولون': settlement.totalFreight.toFixed(2),
+      'إجمالي المصروفات': settlement.totalExpenses.toFixed(2),
+      'إجمالي الأرباح': settlement.totalProfit.toFixed(2)
+    }));
+    
+    // تحويل إلى CSV
+    const headers = Object.keys(exportData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row => 
+        headers.map(header => `"${row[header] || ''}"`).join(',')
+      )
+    ].join('\n');
+    
+    // إنشاء ملف وتحميله
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `تقرير_التسويات_${customerName}_${year}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showSuccess('تم تصدير تقرير التسويات بنجاح');
+  } catch (error) {
+    console.error('Error exporting settlement report:', error);
+    showError('فشل في تصدير تقرير التسويات: ' + error.message);
+  }
 }
+
 </script>
 
 </body>

@@ -68,6 +68,7 @@ export function mountAppNav(containerSelector, currentPageId) {
 
 export const APP_PAGES = [
   { id: "dashboard", href: "dashboard.html", label: "لوحة التحكم" },
+  { id: "transport", href: "transport-data.html", label: "بيانات النقلات" },
   { id: "prices", href: "prices.html", label: "أسعار الحاويات" },
   { id: "daily", href: "daily.html", label: "الشغل اليومي" },
   { id: "treasury", href: "treasury-system.html", label: "الخزنة" },

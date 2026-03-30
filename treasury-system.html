@@ -301,62 +301,14 @@ button {
   <section class="panel">
     <div class="info" style="margin-bottom:10px;">الخلايا الرقمية تدعم الصيغ مثل: <code>=100+50*2</code> أو <code>=(200-20)/3</code></div>
     <div class="tabs">
-      <button class="tab-btn active" data-tab="transport">بيان النقلات</button>
-      <button class="tab-btn" data-tab="archive">أرشيف البوالص</button>
+      <button class="tab-btn active" data-tab="archive">أرشيف البوالص</button>
       <button class="tab-btn" data-tab="finance">الدفتر المالي الموحد</button>
       <button class="tab-btn" data-tab="customers">حسابات العملاء (محدث تلقائيًا)</button>
       <button class="tab-btn" data-tab="budget">الميزانية</button>
       <button class="tab-btn" data-tab="report">التقرير</button>
     </div>
 
-    <section id="transport" class="section active">
-      <div class="toolbar">
-        <input type="date" id="transportDate" onchange="onTransportDateChange()">
-        <input type="text" id="transportSearch" placeholder="بحث بالعميل أو المكان..." oninput="renderTransport()">
-        <button class="add-btn" onclick="closeTransportDate()">إغلاق اليوم</button>
-        <button class="add-btn" onclick="reopenTransportDate()">فتح اليوم</button>
-        <button class="add-btn" onclick="addTransportRow()">إضافة صف</button>
-        <button class="add-btn" onclick="refreshCustomersFromTransport()">ترحيل الإيصالات لحسابات العملاء</button>
-        <button class="save-btn" onclick="saveTransport()">حفظ بيان النقلات</button>
-        <span class="info" id="transportInfo"></span>
-        <span class="info" id="transportLockInfo"></span>
-      </div>
-      <div class="card" style="margin: 12px 0 14px;">
-        <div class="field">
-          <label for="transportImportText">استيراد بيان النقلات (لصق من Excel)</label>
-          <textarea id="transportImportText" placeholder="الصق رأس الأعمدة + البيانات (Tab-separated أو CSV) ثم اضغط معاينة/استيراد."></textarea>
-        </div>
-        <div class="toolbar" style="margin-top: 10px;">
-          <button class="add-btn" type="button" onclick="previewTransportImport()">معاينة</button>
-          <button class="save-btn" type="button" onclick="importTransportAndAppend()">استيراد وإضافة للبيان + حفظ</button>
-          <span class="info" id="transportImportInfo"></span>
-        </div>
-        <p class="muted helper" style="margin: 10px 0 0;">
-          ملاحظة: يتم تصحيح “الإيصالات (ترحيل العميل)” تلقائيًا كالتالي: <code>قيمة الفاتورة + مصروف+إيصالات العميل</code>.
-        </p>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>التاريخ</th>
-              <th>العميل</th>
-              <th>المكان</th>
-              <th>نولون</th>
-              <th>القومسيون</th>
-              <th>مصروف</th>
-              <th>رقم الفاتورة</th>
-              <th>الإيصالات (ترحيل العميل)</th>
-              <th>رقم التسوية</th>
-              <th>حذف</th>
-            </tr>
-          </thead>
-          <tbody id="transportBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="archive" class="section">
+    <section id="archive" class="section active">
       <div class="toolbar">
         <select id="archiveSheet">
           <option value="بوالص ش 1">بوالص ش 1</option>

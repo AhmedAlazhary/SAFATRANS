@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بيانات النقلات المتقدم - مكتب الصفا</title>
+<style>
+:root {
+  --bg: #eef4f9;
+  --surface: #ffffff;
+  --surface-soft: #f7fbff;
+  --primary: #1f3347;
+  --accent: #2f89d9;
+  --accent-soft: #e8f3fe;
+  --success: #27ae60;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #d8e3ee;
+  --shadow: 0 12px 30px rgba(31, 51, 71, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Tahoma", "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(180deg, #f5f8fc 0%, var(--bg) 100%);
+  color: var(--text);
+}
+
+header {
+  background: linear-gradient(135deg, #1b2e40 0%, #2c3e50 100%);
+  color: #fff;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand img {
+  height: 52px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.4vw, 1.55rem);
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-btn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.primary-btn:hover {
+  background: #2573a6;
+}
+
+.success-btn {
+  background: var(--success);
+  color: #fff;
+}
+
+.danger-btn {
+  background: var(--danger);
+  color: #fff;
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.container {
+  width: min(1400px, calc(100% - 24px));
+  margin: 18px auto 28px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.tab-btn:hover:not(.active) {
+  background: var(--surface-soft);
+  border-color: var(--accent);
+}
+
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 137, 217, 0.14);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.card-title {
+  margin: 0;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-soft);
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  min-width: 1800px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+th, td {
+  padding: 8px 6px;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+th {
+  background: var(--accent);
+  color: #fff;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.input-cell {
+  min-width: 80px;
+  padding: 2px;
+}
+
+.input-cell input {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.mini-btn {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.delete-btn {
+  background: var(--danger);
+  color: #fff;
+}
+
+.delete-btn:hover {
+  background: #c0392b;
+}
+
+.receipts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.receipt-card {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.receipt-type {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.receipt-amount {
+  font-weight: 700;
+  color: var(--success);
+}
+
+.receipt-details {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, var(--surface-soft) 0%, var(--surface) 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.summary-item {
+  text-align: center;
+}
+
+.summary-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.summary-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.info {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.status-indicator {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-open {
+  background: rgba(39, 174, 96, 0.14);
+  color: #1f7e46;
+}
+
+.status-closed {
+  background: rgba(231, 76, 60, 0.14);
+  color: #c0392b;
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: min(100% - 14px, 1400px);
+  }
+  
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .field {
+    min-width: 100%;
+  }
+  
+  table {
+    min-width: 1200px;
+  }
+  
+  th, td {
+    padding: 6px 4px;
+    font-size: 0.75rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="logo.png" alt="logo">
+    <h1>بيانات النقلات المتقدم</h1>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-btn" id="logoutBtn">تسجيل الخروج</button>
+    <button class="ghost-btn" onclick="window.location.href='dashboard.html'">العودة للداشبورد</button>
+  </div>
+</header>
+
+<div id="global-app-nav"></div>
+
+<div class="container">
+  <div class="summary-card">
+    <div class="card-header">
+      <h3 class="card-title">ملخص اليوم</h3>
+      <span class="info" id="dateDisplay"></span>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-value" id="totalTransports">0</div>
+        <div class="summary-label">إجمالي النقلات</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="totalFreight">0</div>
+        <div class="summary-label">إجمالي النولون</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="totalExpenses">0</div>
+        <div class="summary-label">إجمالي المصروفات</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="totalProfit">0</div>
+        <div class="summary-label">إجمالي الأرباح</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="totalDeposits">0</div>
+        <div class="summary-label">إجمالي العهد</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="totalRemaining">0</div>
+        <div class="summary-label">إجمالي الباقي</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="transport">بيانات النقلات</button>
+    <button class="tab-btn" data-tab="receipts">الإيصالات</button>
+    <button class="tab-btn" data-tab="settlements">التسويات</button>
+    <button class="tab-btn" data-tab="reports">التقارير</button>
+  </div>
+
+  <!-- بيانات النقلات -->
+  <section id="transport" class="section active">
+    <div class="toolbar">
+      <div class="field">
+        <label for="transportDate">التاريخ</label>
+        <input type="date" id="transportDate" onchange="onDateChange()">
+      </div>
+      <div class="field">
+        <label for="transportSearch">بحث</label>
+        <input type="text" id="transportSearch" placeholder="بحث بالعميل أو الإذن..." oninput="renderTransportTable()">
+      </div>
+      <button class="primary-btn" onclick="addNewTransportRow()">إضافة صف جديد</button>
+      <button class="success-btn" onclick="saveAllTransportData()">حفظ البيانات</button>
+      <button class="primary-btn" onclick="exportToExcel()">تصدير Excel</button>
+      <span class="info" id="transportInfo"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">جدول بيانات النقلات</h3>
+        <span class="status-indicator status-open" id="dayStatus">مفتوح</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">التسوية</th>
+              <th rowspan="2">العميل</th>
+              <th colspan="4">الإذن والبوليصة</th>
+              <th colspan="5">بيانات النقلة</th>
+              <th colspan="4">السائق والسيارة</th>
+              <th colspan="8">بيانات مالية</th>
+              <th rowspan="2">حذف</th>
+            </tr>
+            <tr>
+              <th>رقم</th>
+              <th>مسلسل</th>
+              <th>نوع الإذن</th>
+              <th>رقم الإذن</th>
+              <th>نوع البوليصة</th>
+              <th>رقم البوليصة</th>
+              <th>A/D</th>
+              <th>التحميل</th>
+              <th>التعتيق</th>
+              <th>الحجم</th>
+              <th>التوكيل</th>
+              <th>السائق</th>
+              <th>رقم السيارة</th>
+              <th>رقم الحاوية</th>
+              <th>العدد</th>
+              <th>العهدة</th>
+              <th>النولون</th>
+              <th>المصروفات</th>
+              <th>الفاتورة</th>
+              <th>مصروف العميل</th>
+              <th>الضريبة</th>
+              <th>الربح</th>
+              <th>الباقي</th>
+              <th>القومسيون</th>
+              <th>النولون الصافي</th>
+              <th>طريقة الصرف</th>
+              <th>أخرى</th>
+            </tr>
+          </thead>
+          <tbody id="transportTableBody">
+            <!-- سيتم ملؤها ديناميكيًا -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- الإيصالات -->
+  <section id="receipts" class="section">
+    <div class="toolbar">
+      <div class="field">
+        <label for="receiptDate">التاريخ</label>
+        <input type="date" id="receiptDate">
+      </div>
+      <div class="field">
+        <label for="receiptType">نوع الإيصال</label>
+        <select id="receiptType">
+          <option value="">اختر النوع</option>
+          <option value="جيش">جيش</option>
+          <option value="هيئة">هيئة</option>
+          <option value="تخصيص">تخصيص</option>
+          <option value="تحميل">تحميل</option>
+          <option value="تعتيق">تعتيق</option>
+          <option value="ميزان">ميزان</option>
+          <option value="فوارغ">فوارغ</option>
+          <option value="كارته">كارته</option>
+          <option value="تحويل">تحويل</option>
+          <option value="بيات">بيات</option>
+          <option value="عطله">عطله</option>
+          <option value="عطله اكس راى">عطله اكس راى</option>
+          <option value="إكرامية سائق">إكرامية سائق</option>
+          <option value="نقل داخلى">نقل داخلى</option>
+          <option value="بدل كارته">بدل كارته</option>
+          <option value="سيل">سيل</option>
+          <option value="بوصلة">بوصلة</option>
+          <option value="أخرى">أخرى</option>
+        </select>
+      </div>
+      <button class="primary-btn" onclick="addNewReceipt()">إضافة إيصال جديد</button>
+      <button class="success-btn" onclick="saveAllReceipts()">حفظ الإيصالات</button>
+      <span class="info" id="receiptsInfo"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">جدول الإيصالات</h3>
+        <span class="info">الإيصالات المرتبطة ببيانات النقلات</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>نوع الإيصال</th>
+              <th>القيمة</th>
+              <th>رقم الإذن</th>
+              <th>رقم البوليصة</th>
+              <th>الوصف</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="receiptsTableBody">
+            <!-- سيتم ملؤها ديناميكيًا -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- التسويات -->
+  <section id="settlements" class="section">
+    <div class="toolbar">
+      <div class="field">
+        <label for="settlementCustomer">العميل</label>
+        <input type="text" id="settlementCustomer" placeholder="اختر العميل">
+      </div>
+      <div class="field">
+        <label for="settlementYear">السنة</label>
+        <input type="number" id="settlementYear" value="2026">
+      </div>
+      <button class="primary-btn" onclick="generateSettlementReport()">توليد تقرير التسوية</button>
+      <button class="success-btn" onclick="exportSettlementReport()">تصدير التقرير</button>
+      <span class="info" id="settlementsInfo"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">تقارير التسويات</h3>
+        <span class="info">ملخص تسويات العملاء</span>
+      </div>
+      <div id="settlementsReport">
+        <!-- سيتم ملؤها ديناميكيًا -->
+      </div>
+    </div>
+  </section>
+
+  <!-- التقارير -->
+  <section id="reports" class="section">
+    <div class="toolbar">
+      <div class="field">
+        <label for="reportFromDate">من تاريخ</label>
+        <input type="date" id="reportFromDate">
+      </div>
+      <div class="field">
+        <label for="reportToDate">إلى تاريخ</label>
+        <input type="date" id="reportToDate">
+      </div>
+      <button class="primary-btn" onclick="generateComprehensiveReport()">توليد تقرير شامل</button>
+      <button class="success-btn" onclick="printReport()">طباعة التقرير</button>
+      <span class="info" id="reportsInfo"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">التقرير الشامل</h3>
+        <span class="info">تحليل شامل للفترة المحددة</span>
+      </div>
+      <div id="comprehensiveReport">
+        <!-- سيتم ملؤها ديناميكيًا -->
+      </div>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./js/firebase-config.js";
+import { mountAppNav } from "./js/app-nav.js";
+import "./js/transport-data-system.js";
+
+// تهيئة Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+
+// متغيرات عامة
+let transportSystem = null;
+let currentTransportData = [];
+let currentReceiptsData = [];
+let selectedDate = new Date().toISOString().split('T')[0];
+
+// تهيئة الصفحة
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    // تثبيت شريط التنقل
+    mountAppNav("#global-app-nav", "transport");
+    
+    // التحقق من المستخدم
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+      
+      // تهيئة نظام بيانات النقلات
+      transportSystem = new TransportDataSystem(firestore, auth);
+      
+      // تحميل البيانات الأولية
+      await loadInitialData();
+      
+      // إعداد الأحداث
+      setupEventListeners();
+      
+      // عرض التاريخ الحالي
+      document.getElementById('dateDisplay').textContent = selectedDate;
+      document.getElementById('transportDate').value = selectedDate;
+      document.getElementById('receiptDate').value = selectedDate;
+    });
+    
+    // زر تسجيل الخروج
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = "index.html";
+    });
+    
+  } catch (error) {
+    console.error('Error initializing page:', error);
+    showError('فشل في تهيئة الصفحة');
+  }
+});
+
+// تحميل البيانات الأولية
+async function loadInitialData() {
+  try {
+    await transportSystem.loadBasicData();
+    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
+    currentReceiptsData = transportSystem.receiptsData.filter(receipt => receipt.date === selectedDate);
+    
+    renderTransportTable();
+    renderReceiptsTable();
+    updateSummary();
+  } catch (error) {
+    console.error('Error loading initial data:', error);
+    showError('فشل في تحميل البيانات');
+  }
+}
+
+// إعداد الأحداث
+function setupEventListeners() {
+  // تبويبات الصفحة
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.tab;
+      switchTab(tabId);
+    });
+  });
+}
+
+// تبديل التبويبات
+function switchTab(tabId) {
+  // تحديث الأزرار
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+  
+  // تحديث الأقسام
+  document.querySelectorAll('.section').forEach(section => {
+    section.classList.toggle('active', section.id === tabId);
+  });
+}
+
+// تغيير التاريخ
+async function onDateChange() {
+  selectedDate = document.getElementById('transportDate').value;
+  document.getElementById('dateDisplay').textContent = selectedDate;
+  document.getElementById('receiptDate').value = selectedDate;
+  
+  try {
+    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
+    currentReceiptsData = transportSystem.receiptsData.filter(receipt => receipt.date === selectedDate);
+    
+    renderTransportTable();
+    renderReceiptsTable();
+    updateSummary();
+  } catch (error) {
+    console.error('Error changing date:', error);
+    showError('فشل في تغيير التاريخ');
+  }
+}
+
+// إضافة صف جديد في بيانات النقلات
+function addNewTransportRow() {
+  const newRow = transportSystem.createNewTransportRow({
+    date: selectedDate
+  });
+  
+  currentTransportData.push(newRow);
+  renderTransportTable();
+  showSuccess('تم إضافة صف جديد');
+}
+
+// عرض جدول بيانات النقلات
+function renderTransportTable() {
+  const tbody = document.getElementById('transportTableBody');
+  const searchTerm = document.getElementById('transportSearch').value.toLowerCase();
+  
+  // تصفية البيانات
+  const filteredData = currentTransportData.filter(row => {
+    const searchFields = [
+      row.customerName || '',
+      row.permitNumber || '',
+      row.billNumber || '',
+      row.driverName || '',
+      row.carNumber || ''
+    ].join(' ').toLowerCase();
+    
+    return searchFields.includes(searchTerm);
+  });
+  
+  tbody.innerHTML = filteredData.map((row, index) => `
+    <tr data-id="${row.id}">
+      <td class="input-cell">
+        <input type="number" value="${row.settlementNumber || ''}" 
+               onchange="updateTransportField('${row.id}', 'settlementNumber', this.value)"
+               placeholder="رقم التسوية">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.settlementSequence || 1}" 
+               onchange="updateTransportField('${row.id}', 'settlementSequence', this.value)"
+               placeholder="المسلسل">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.customerName || ''}" 
+               onchange="updateTransportField('${row.id}', 'customerName', this.value)"
+               placeholder="العميل">
+      </td>
+      <td class="input-cell">
+        <select onchange="updateTransportField('${row.id}', 'permitType', this.value)">
+          <option value="">اختر</option>
+          <option value="صادر" ${row.permitType === 'صادر' ? 'selected' : ''}>صادر</option>
+          <option value="وارد" ${row.permitType === 'وارد' ? 'selected' : ''}>وارد</option>
+        </select>
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.permitNumber || ''}" 
+               onchange="updateTransportField('${row.id}', 'permitNumber', this.value)"
+               placeholder="رقم الإذن">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.billType || ''}" 
+               onchange="updateTransportField('${row.id}', 'billType', this.value)"
+               placeholder="نوع البوليصة">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.billNumber || ''}" 
+               onchange="updateTransportField('${row.id}', 'billNumber', this.value)"
+               placeholder="رقم البوليصة">
+      </td>
+      <td class="input-cell">
+        <select onchange="updateTransportField('${row.id}', 'transportType', this.value)">
+          <option value="">اختر</option>
+          <option value="A" ${row.transportType === 'A' ? 'selected' : ''}>A</option>
+          <option value="D" ${row.transportType === 'D' ? 'selected' : ''}>D</option>
+          <option value="A/D" ${row.transportType === 'A/D' ? 'selected' : ''}>A/D</option>
+        </select>
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.loadingLocation || ''}" 
+               onchange="updateTransportField('${row.id}', 'loadingLocation', this.value)"
+               placeholder="مكان التحميل">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.dischargeLocation || ''}" 
+               onchange="updateTransportField('${row.id}', 'dischargeLocation', this.value)"
+               placeholder="مكان التعتيق">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.containerSize || ''}" 
+               onchange="updateTransportField('${row.id}', 'containerSize', this.value)"
+               placeholder="الحجم">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.agencyName || ''}" 
+               onchange="updateTransportField('${row.id}', 'agencyName', this.value)"
+               placeholder="التوكيل">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.driverName || ''}" 
+               onchange="updateTransportField('${row.id}', 'driverName', this.value)"
+               placeholder="السائق">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.carNumber || ''}" 
+               onchange="updateTransportField('${row.id}', 'carNumber', this.value)"
+               placeholder="رقم السيارة">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.containerNumber || ''}" 
+               onchange="updateTransportField('${row.id}', 'containerNumber', this.value)"
+               placeholder="رقم الحاوية">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.containerCount || 1}" 
+               onchange="updateTransportField('${row.id}', 'containerCount', this.value)"
+               min="1" max="2">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.deposit || 0}" 
+               onchange="updateTransportField('${row.id}', 'deposit', this.value)"
+               step="0.01">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.totalFreight || 0}" 
+               onchange="updateTransportField('${row.id}', 'totalFreight', this.value)"
+               step="0.01">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.expenses || 0}" 
+               onchange="updateTransportField('${row.id}', 'expenses', this.value)"
+               step="0.01" readonly>
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.invoiceValue || 0}" 
+               onchange="updateTransportField('${row.id}', 'invoiceValue', this.value)"
+               step="0.01">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.customerExpenses || 0}" 
+               onchange="updateTransportField('${row.id}', 'customerExpenses', this.value)"
+               step="0.01">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.vat || 0}" 
+               onchange="updateTransportField('${row.id}', 'vat', this.value)"
+               step="0.01">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.transportProfit || 0}" 
+               onchange="updateTransportField('${row.id}', 'transportProfit', this.value)"
+               step="0.01" readonly>
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.remaining || 0}" 
+               onchange="updateTransportField('${row.id}', 'remaining', this.value)"
+               step="0.01" readonly>
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.commission || 0}" 
+               onchange="updateTransportField('${row.id}', 'commission', this.value)"
+               step="0.01">
+      </td>
+      <td class="input-cell">
+        <input type="number" value="${row.netFreight || 0}" 
+               onchange="updateTransportField('${row.id}', 'netFreight', this.value)"
+               step="0.01" readonly>
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.paymentMethod || ''}" 
+               onchange="updateTransportField('${row.id}', 'paymentMethod', this.value)"
+               placeholder="طريقة الصرف">
+      </td>
+      <td class="input-cell">
+        <input type="text" value="${row.other || ''}" 
+               onchange="updateTransportField('${row.id}', 'other', this.value)"
+               placeholder="أخرى">
+      </td>
+      <td class="actions-cell">
+        <button class="mini-btn delete-btn" onclick="deleteTransportRow('${row.id}')">حذف</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// تحديث حقل في بيانات النقلات
+async function updateTransportField(id, field, value) {
+  try {
+    const row = currentTransportData.find(r => r.id === id);
+    if (!row) return;
+    
+    // تحديث القيمة
+    if (field === 'settlementNumber' || field === 'settlementSequence' || 
+        field === 'deposit' || field === 'totalFreight' || field === 'commission') {
+      row[field] = parseFloat(value) || 0;
+    } else {
+      row[field] = value;
+    }
+    
+    // إعادة الحسابات المالية
+    transportSystem.calculateFinancialValues(row);
+    
+    // تحديث الجدول
+    renderTransportTable();
+    updateSummary();
+    
+  } catch (error) {
+    console.error('Error updating transport field:', error);
+    showError('فشل في تحديث الحقل');
+  }
+}
+
+// حذف صف من بيانات النقلات
+async function deleteTransportRow(id) {
+  if (!confirm('هل أنت متأكد من حذف هذا الصف؟')) return;
+  
+  try {
+    await transportSystem.deleteTransportRow(id);
+    currentTransportData = currentTransportData.filter(row => row.id !== id);
+    renderTransportTable();
+    updateSummary();
+    showSuccess('تم حذف الصف بنجاح');
+  } catch (error) {
+    console.error('Error deleting transport row:', error);
+    showError('فشل في حذف الصف');
+  }
+}
+
+// حفظ جميع بيانات النقلات
+async function saveAllTransportData() {
+  try {
+    showInfo('جاري الحفظ...');
+    
+    // حفظ كل الصفوف
+    for (const row of currentTransportData) {
+      await transportSystem.saveTransportRow(row);
+    }
+    
+    showSuccess('تم حفظ جميع البيانات بنجاح');
+  } catch (error) {
+    console.error('Error saving transport data:', error);
+    showError('فشل في حفظ البيانات');
+  }
+}
+
+// تحديث الملخص
+function updateSummary() {
+  const summary = transportSystem.calculateDailySummary(currentTransportData);
+  
+  document.getElementById('totalTransports').textContent = summary.totalTransports;
+  document.getElementById('totalFreight').textContent = summary.totalFreight.toFixed(2);
+  document.getElementById('totalExpenses').textContent = summary.totalExpenses.toFixed(2);
+  document.getElementById('totalProfit').textContent = summary.totalProfit.toFixed(2);
+  document.getElementById('totalDeposits').textContent = summary.totalDeposits.toFixed(2);
+  document.getElementById('totalRemaining').textContent = summary.totalRemaining.toFixed(2);
+}
+
+// دوال المساعدة
+function showSuccess(message) {
+  const info = document.getElementById('transportInfo');
+  info.textContent = message;
+  info.style.color = 'var(--success)';
+  setTimeout(() => info.textContent = '', 3000);
+}
+
+function showError(message) {
+  const info = document.getElementById('transportInfo');
+  info.textContent = message;
+  info.style.color = 'var(--danger)';
+  setTimeout(() => info.textContent = '', 3000);
+}
+
+function showInfo(message) {
+  const info = document.getElementById('transportInfo');
+  info.textContent = message;
+  info.style.color = 'var(--muted)';
+}
+
+// دوال الإيصالات
+function addNewReceipt() {
+  const receiptType = document.getElementById('receiptType').value;
+  const receiptDate = document.getElementById('receiptDate').value;
+  
+  if (!receiptType) {
+    showError('يرجى اختيار نوع الإيصال');
+    return;
+  }
+  
+  const newReceipt = transportSystem.createNewReceipt({
+    receiptType: receiptType,
+    receiptAmount: 0,
+    date: receiptDate
+  });
+  
+  currentReceiptsData.push(newReceipt);
+  renderReceiptsTable();
+  showSuccess('تم إضافة إيصال جديد');
+}
+
+async function saveAllReceipts() {
+  try {
+    showInfo('جاري حفظ الإيصالات...');
+    
+    // حفظ كل الإيصالات
+    for (const receipt of currentReceiptsData) {
+      await transportSystem.saveReceipt(receipt);
+    }
+    
+    showSuccess('تم حفظ جميع الإيصالات بنجاح');
+  } catch (error) {
+    console.error('Error saving receipts:', error);
+    showError('فشل في حفظ الإيصالات');
+  }
+}
+
+function renderReceiptsTable() {
+  const tbody = document.getElementById('receiptsTableBody');
+  
+  tbody.innerHTML = currentReceiptsData.map((receipt) => `
+    <tr data-id="${receipt.id}">
+      <td>
+        <input type="date" value="${receipt.date || ''}" 
+               onchange="updateReceiptField('${receipt.id}', 'date', this.value)">
+      </td>
+      <td>
+        <select onchange="updateReceiptField('${receipt.id}', 'receiptType', this.value)">
+          <option value="">اختر</option>
+          ${transportSystem.receiptTypes.map(type => 
+            `<option value="${type}" ${receipt.receiptType === type ? 'selected' : ''}>${type}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td>
+        <input type="number" value="${receipt.receiptAmount || 0}" 
+               onchange="updateReceiptField('${receipt.id}', 'receiptAmount', this.value)"
+               step="0.01" placeholder="0.00">
+      </td>
+      <td>
+        <input type="text" value="${receipt.permitNumber || ''}" 
+               onchange="updateReceiptField('${receipt.id}', 'permitNumber', this.value)"
+               placeholder="رقم الإذن">
+      </td>
+      <td>
+        <input type="text" value="${receipt.billNumber || ''}" 
+               onchange="updateReceiptField('${receipt.id}', 'billNumber', this.value)"
+               placeholder="رقم البوليصة">
+      </td>
+      <td>
+        <input type="text" value="${receipt.description || ''}" 
+               onchange="updateReceiptField('${receipt.id}', 'description', this.value)"
+               placeholder="الوصف">
+      </td>
+      <td class="actions-cell">
+        <button class="mini-btn delete-btn" onclick="deleteReceipt('${receipt.id}')">حذف</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function updateReceiptField(id, field, value) {
+  try {
+    const receipt = currentReceiptsData.find(r => r.id === id);
+    if (!receipt) return;
+    
+    // تحديث القيمة
+    if (field === 'receiptAmount') {
+      receipt[field] = parseFloat(value) || 0;
+    } else {
+      receipt[field] = value;
+    }
+    
+    // إذا تم تغيير رقم الإذن أو البوليصة، تحديث الربط
+    if (field === 'permitNumber' || field === 'billNumber') {
+      await transportSystem.updateAllLinkedTransports(receipt.permitNumber, receipt.billNumber);
+      renderTransportTable();
+      updateSummary();
+    }
+    
+  } catch (error) {
+    console.error('Error updating receipt field:', error);
+    showError('فشل في تحديث حقل الإيصال');
+  }
+}
+
+async function deleteReceipt(id) {
+  if (!confirm('هل أنت متأكد من حذف هذا الإيصال؟')) return;
+  
+  try {
+    await transportSystem.deleteReceipt(id);
+    currentReceiptsData = currentReceiptsData.filter(receipt => receipt.id !== id);
+    renderReceiptsTable();
+    showSuccess('تم حذف الإيصال بنجاح');
+  } catch (error) {
+    console.error('Error deleting receipt:', error);
+    showError('فشل في حذف الإيصال');
+  }
+}
+
+// دوال التقارير (ستكتمل لاحقًا)
+function generateComprehensiveReport() {
+  // سيتم تنفيذها لاحقًا
+  console.log('Generate comprehensive report');
+}
+
+function printReport() {
+  // سيتم تنفيذها لاحقًا
+  console.log('Print report');
+}
+
+function exportToExcel() {
+  // سيتم تنفيذها لاحقًا
+  console.log('Export to Excel');
+}
+
+function generateSettlementReport() {
+  // سيتم تنفيذها لاحقًا
+  console.log('Generate settlement report');
+}
+
+function exportSettlementReport() {
+  // سيتم تنفيذها لاحقًا
+  console.log('Export settlement report');
+}
+</script>
+
+</body>
+</html>

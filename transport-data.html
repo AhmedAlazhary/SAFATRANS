@@ -681,6 +681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // تهيئة نظام بيانات النقلات
       transportSystem = new TransportDataSystem(firestore, auth);
+      transportSystem.currentUser = user; // تعيين المستخدم مباشرة
       
       // تحميل البيانات الأولية
       await loadInitialData();

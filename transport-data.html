@@ -641,7 +641,7 @@ tr:last-child td {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./js/firebase-config.js";
 import { mountAppNav } from "./js/app-nav.js";
 import TransportDataSystem from "./js/transport-data-system.js";
@@ -658,184 +658,6 @@ function generateUUID() {
     const v = c == 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
-}
-
-// TransportDataSystem class مباشرة في الصفحة
-class TransportDataSystem {
-  constructor(firestore, auth) {
-    this.firestore = firestore;
-    this.auth = auth;
-    this.currentUser = null;
-    this.transportData = [];
-    this.receiptsData = [];
-    this.settlementsData = [];
-    this.customersData = [];
-    this.receiptTypes = ['إذن', 'بوليصة', 'إيصال', 'أخرى'];
-  }
-
-  async init() {
-    this.currentUser = this.auth.currentUser;
-    if (!this.currentUser) {
-      throw new Error('User not authenticated');
-    }
-    await this.loadBasicData();
-  }
-
-  async loadBasicData() {
-    try {
-      // تحميل بيانات النقلات
-      try {
-        const transportQuery = collection(this.firestore, 'TransportData');
-        const transportSnapshot = await getDocs(transportQuery);
-        this.transportData = transportSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } catch (error) {
-        console.warn('TransportData collection not found, loading from localStorage:', error);
-        this.transportData = this.loadFromLocalStorage('transportData');
-      }
-
-      // تحميل الإيصالات
-      try {
-        const receiptsQuery = collection(this.firestore, 'TransportReceipts');
-        const receiptsSnapshot = await getDocs(receiptsQuery);
-        this.receiptsData = receiptsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } catch (error) {
-        console.warn('TransportReceipts collection not found, loading from localStorage:', error);
-        this.receiptsData = this.loadFromLocalStorage('receiptsData');
-      }
-
-      // تحميل التسويات
-      try {
-        const settlementsQuery = collection(this.firestore, 'TransportSettlements');
-        const settlementsSnapshot = await getDocs(settlementsQuery);
-        this.settlementsData = settlementsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } catch (error) {
-        console.warn('TransportSettlements collection not found, loading from localStorage:', error);
-        this.settlementsData = this.loadFromLocalStorage('settlementsData');
-      }
-
-      // تحميل العملاء
-      try {
-        const customersQuery = collection(this.firestore, 'Customers');
-        const customersSnapshot = await getDocs(customersQuery);
-        this.customersData = customersSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } catch (error) {
-        console.warn('Customers collection not found, loading from localStorage:', error);
-        this.customersData = this.loadFromLocalStorage('customersData');
-      }
-    } catch (error) {
-      console.error('Error loading basic data:', error);
-      throw error;
-    }
-  }
-
-  createNewTransportRow(overrides = {}) {
-    const newTransport = {
-      id: generateUUID(),
-      date: overrides.date || new Date().toISOString().split('T')[0],
-      settlementNumber: overrides.settlementNumber || null,
-      settlementSequence: overrides.settlementSequence || 1,
-      customerName: overrides.customerName || '',
-      permitType: overrides.permitType || '',
-      permitNumber: overrides.permitNumber || '',
-      billType: overrides.billType || '',
-      billNumber: overrides.billNumber || '',
-      transportType: overrides.transportType || '',
-      loadingLocation: overrides.loadingLocation || '',
-      dischargeLocation: overrides.dischargeLocation || '',
-      containerSize: overrides.containerSize || '',
-      agencyName: overrides.agencyName || '',
-      driverName: overrides.driverName || '',
-      carNumber: overrides.carNumber || '',
-      containerNumber: overrides.containerNumber || '',
-      containerCount: overrides.containerCount || 1,
-      deposit: overrides.deposit || 0,
-      totalFreight: overrides.totalFreight || 0,
-      expenses: overrides.expenses || 0,
-      invoiceValue: overrides.invoiceValue || 0,
-      customerExpenses: overrides.customerExpenses || 0,
-      vat: overrides.vat || 0,
-      transportProfit: overrides.transportProfit || 0,
-      remaining: overrides.remaining || 0,
-      commission: overrides.commission || 0,
-      netFreight: overrides.netFreight || 0,
-      paymentMethod: overrides.paymentMethod || '',
-      other: overrides.other || '',
-      createdAt: new Date(),
-      createdBy: this.currentUser.uid,
-      updatedAt: new Date(),
-      updatedBy: this.currentUser.uid
-    };
-
-    return newTransport;
-  }
-
-  getTransportDataByDate(date) {
-    return this.transportData.filter(transport => transport.date === date);
-  }
-
-  async saveTransportRow(transportData) {
-    try {
-      transportData.updatedAt = new Date();
-      transportData.updatedBy = this.currentUser.uid;
-      
-      try {
-        await setDoc(doc(this.firestore, 'TransportData', transportData.id), transportData);
-      } catch (error) {
-        console.warn('Error saving to TransportData, might be permission issue:', error);
-        this.saveToLocalStorage('transportData', transportData);
-      }
-      
-      const existingIndex = this.transportData.findIndex(t => t.id === transportData.id);
-      if (existingIndex >= 0) {
-        this.transportData[existingIndex] = transportData;
-      } else {
-        this.transportData.push(transportData);
-      }
-      
-      return transportData;
-    } catch (error) {
-      console.error('Error saving transport row:', error);
-      throw error;
-    }
-  }
-
-  saveToLocalStorage(key, data) {
-    try {
-      const existingData = JSON.parse(localStorage.getItem(`safa_${key}`) || '[]');
-      const index = existingData.findIndex(item => item.id === data.id);
-      
-      if (index >= 0) {
-        existingData[index] = data;
-      } else {
-        existingData.push(data);
-      }
-      
-      localStorage.setItem(`safa_${key}`, JSON.stringify(existingData));
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-    }
-  }
-
-  loadFromLocalStorage(key) {
-    try {
-      return JSON.parse(localStorage.getItem(`safa_${key}`) || '[]');
-    } catch (error) {
-      console.error('Error loading from localStorage:', error);
-      return [];
-    }
-  }
 }
 
 // متغيرات عامة
@@ -882,21 +704,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     showError('فشل في تهيئة الصفحة');
   }
 });
-
-// Global access for onclick handlers
-window.addNewTransportRow = addNewTransportRow;
-window.saveAllTransportData = saveAllTransportData;
-window.exportToExcel = exportToExcel;
-window.onDateChange = onDateChange;
-window.addNewReceipt = addNewReceipt;
-window.saveReceipts = saveReceipts;
-window.deleteReceipt = deleteReceipt;
-window.updateTransportField = updateTransportField;
-window.deleteTransportRow = deleteTransportRow;
-window.generateComprehensiveReport = generateComprehensiveReport;
-window.printReport = printReport;
-window.generateSettlementReport = generateSettlementReport;
-window.exportSettlementReport = exportSettlementReport;
 
 // تحميل البيانات الأولية
 async function loadInitialData() {
@@ -1734,6 +1541,24 @@ function exportSettlementReport() {
     showError('فشل في تصدير تقرير التسويات: ' + error.message);
   }
 }
+
+// Global access for onclick handlers - بعد تعريف كل الدوال
+window.addNewTransportRow = addNewTransportRow;
+window.saveAllTransportData = saveAllTransportData;
+window.exportToExcel = exportToExcel;
+window.onDateChange = onDateChange;
+window.addNewReceipt = addNewReceipt;
+window.saveAllReceipts = saveAllReceipts;
+window.deleteReceipt = deleteReceipt;
+window.updateTransportField = updateTransportField;
+window.updateReceiptField = updateReceiptField;
+window.deleteTransportRow = deleteTransportRow;
+window.renderTransportTable = renderTransportTable;
+window.renderReceiptsTable = renderReceiptsTable;
+window.generateComprehensiveReport = generateComprehensiveReport;
+window.printReport = printReport;
+window.generateSettlementReport = generateSettlementReport;
+window.exportSettlementReport = exportSettlementReport;
 
 </script>
 

@@ -26,14 +26,22 @@ class TransportDataSystem {
     
     // أنواع الإيصالات المتاحة
     this.receiptTypes = ['إذن', 'بوليصة', 'إيصال', 'أخرى'];
-    
-    this.init();
   }
 
   async init() {
     this.currentUser = this.auth.currentUser;
     if (!this.currentUser) {
-      throw new Error('User not authenticated');
+      // الانتظار قليلاً إذا لم يكن المستخدم متاحاً بعد
+      return new Promise((resolve) => {
+        const unsubscribe = this.auth.onAuthStateChanged(async (user) => {
+          if (user) {
+            this.currentUser = user;
+            await this.loadBasicData();
+            unsubscribe();
+            resolve();
+          }
+        });
+      });
     }
     
     // تحميل البيانات الأساسية

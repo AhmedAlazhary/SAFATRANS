@@ -644,7 +644,7 @@ import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/fi
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./js/firebase-config.js";
 import { mountAppNav } from "./js/app-nav.js";
-import "./js/transport-data-system.js";
+import TransportDataSystem from "./js/transport-data-system.js";
 
 // تهيئة Firebase
 const app = initializeApp(firebaseConfig);
@@ -682,7 +682,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       // عرض التاريخ الحالي
       document.getElementById('dateDisplay').textContent = selectedDate;
       document.getElementById('transportDate').value = selectedDate;
-      document.getElementById('receiptDate').value = selectedDate;
     });
     
     // زر تسجيل الخروج
@@ -696,6 +695,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     showError('فشل في تهيئة الصفحة');
   }
 });
+
+// Global access for onclick handlers
+window.addNewTransportRow = addNewTransportRow;
+window.saveAllTransportData = saveAllTransportData;
+window.exportToExcel = exportToExcel;
+window.onDateChange = onDateChange;
+window.addNewReceipt = addNewReceipt;
+window.saveReceipts = saveReceipts;
+window.deleteReceipt = deleteReceipt;
+window.updateTransportField = updateTransportField;
+window.deleteTransportRow = deleteTransportRow;
+window.generateComprehensiveReport = generateComprehensiveReport;
+window.printReport = printReport;
+window.generateSettlementReport = generateSettlementReport;
+window.exportSettlementReport = exportSettlementReport;
 
 // تحميل البيانات الأولية
 async function loadInitialData() {

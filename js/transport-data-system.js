@@ -3,6 +3,17 @@
  * يتعامل مع المنطق المعقد للتسويات والإيصالات والمطابقة
  */
 
+import { collection, getDocs, doc, setDoc, getDoc, query, where, orderBy, limit, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// Helper function to generate UUID
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 class TransportDataSystem {
   constructor(firestore, auth) {
     this.firestore = firestore;
@@ -14,12 +25,7 @@ class TransportDataSystem {
     this.customersData = [];
     
     // أنواع الإيصالات المتاحة
-    this.receiptTypes = [
-      'جيش', 'هيئة', 'تخصيص', 'تحميل', 'تعتيق', 'ميزان', 
-      'فوارغ', 'كارته', 'تحويل', 'بيات', 'عطله', 
-      'عطله اكس راى', 'إكرامية سائق', 'نقل داخلى', 
-      'بدل كارته', 'سيل', 'بوصلة', 'أخرى'
-    ];
+    this.receiptTypes = ['إذن', 'بوليصة', 'إيصال', 'أخرى'];
     
     this.init();
   }
@@ -41,7 +47,8 @@ class TransportDataSystem {
     try {
       // تحميل بيانات النقلات
       try {
-        const transportSnapshot = await this.firestore.collection('TransportData').get();
+        const transportQuery = collection(this.firestore, 'TransportData');
+        const transportSnapshot = await getDocs(transportQuery);
         this.transportData = transportSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -53,7 +60,8 @@ class TransportDataSystem {
 
       // تحميل الإيصالات
       try {
-        const receiptsSnapshot = await this.firestore.collection('TransportReceipts').get();
+        const receiptsQuery = collection(this.firestore, 'TransportReceipts');
+        const receiptsSnapshot = await getDocs(receiptsQuery);
         this.receiptsData = receiptsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -65,7 +73,8 @@ class TransportDataSystem {
 
       // تحميل التسويات
       try {
-        const settlementsSnapshot = await this.firestore.collection('TransportSettlements').get();
+        const settlementsQuery = collection(this.firestore, 'TransportSettlements');
+        const settlementsSnapshot = await getDocs(settlementsQuery);
         this.settlementsData = settlementsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -77,7 +86,8 @@ class TransportDataSystem {
 
       // تحميل العملاء
       try {
-        const customersSnapshot = await this.firestore.collection('Customers').get();
+        const customersQuery = collection(this.firestore, 'Customers');
+        const customersSnapshot = await getDocs(customersQuery);
         this.customersData = customersSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -99,7 +109,7 @@ class TransportDataSystem {
   createNewTransportRow(overrides = {}) {
     const newTransport = {
       // معلومات أساسية
-      id: this.firestore.collection('TransportData').doc().id,
+      id: generateUUID(),
       date: overrides.date || new Date().toISOString().split('T')[0],
       
       // معلومات التسوية
@@ -197,7 +207,7 @@ class TransportDataSystem {
    */
   createNewReceipt(overrides = {}) {
     const newReceipt = {
-      id: this.firestore.collection('TransportReceipts').doc().id,
+      id: generateUUID(),
       receiptType: overrides.receiptType || '',
       receiptAmount: overrides.receiptAmount || 0,
       permitNumber: overrides.permitNumber || '',
@@ -273,7 +283,7 @@ class TransportDataSystem {
       
       // حفظ في Firestore
       try {
-        await this.firestore.collection('TransportData').doc(transportData.id).set(transportData);
+        await setDoc(doc(this.firestore, 'TransportData', transportData.id), transportData);
       } catch (error) {
         console.warn('Error saving to TransportData, might be permission issue:', error);
         // نحاول نحفظ في localStorage كبديل مؤقت
@@ -301,7 +311,7 @@ class TransportDataSystem {
   async saveReceipt(receiptData) {
     try {
       // حفظ في Firestore
-      await this.firestore.collection('TransportReceipts').doc(receiptData.id).set(receiptData);
+      await setDoc(doc(this.firestore, 'TransportReceipts', receiptData.id), receiptData);
       
       // تحديث البيانات المحلية
       const existingIndex = this.receiptsData.findIndex(r => r.id === receiptData.id);
@@ -346,7 +356,7 @@ class TransportDataSystem {
    */
   async deleteTransportRow(transportId) {
     try {
-      await this.firestore.collection('TransportData').doc(transportId).delete();
+      await deleteDoc(doc(this.firestore, 'TransportData', transportId));
       
       // تحديث البيانات المحلية
       this.transportData = this.transportData.filter(t => t.id !== transportId);
@@ -368,7 +378,7 @@ class TransportDataSystem {
         throw new Error('Receipt not found');
       }
       
-      await this.firestore.collection('TransportReceipts').doc(receiptId).delete();
+      await deleteDoc(doc(this.firestore, 'TransportReceipts', receiptId));
       
       // تحديث البيانات المحلية
       this.receiptsData = this.receiptsData.filter(r => r.id !== receiptId);
@@ -496,5 +506,8 @@ class TransportDataSystem {
   }
 }
 
-// التصدير للاستخدام في الموديولات
+// Export للـ class
+export default TransportDataSystem;
+
+// Global access for onclick handlers
 window.TransportDataSystem = TransportDataSystem;

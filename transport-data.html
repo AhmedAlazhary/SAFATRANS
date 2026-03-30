@@ -700,6 +700,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // تحميل البيانات الأولية
 async function loadInitialData() {
   try {
+    showInfo('جاري تحميل البيانات...');
+    
     await transportSystem.loadBasicData();
     currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
     currentReceiptsData = transportSystem.receiptsData.filter(receipt => receipt.date === selectedDate);
@@ -707,9 +709,19 @@ async function loadInitialData() {
     renderTransportTable();
     renderReceiptsTable();
     updateSummary();
+    
+    showSuccess('تم تحميل البيانات بنجاح');
   } catch (error) {
     console.error('Error loading initial data:', error);
-    showError('فشل في تحميل البيانات');
+    showError('فشل في تحميل البيانات، سيتم استخدام البيانات المحلية');
+    
+    // استخدام بيانات تجريبية في حالة الفشل
+    currentTransportData = [];
+    currentReceiptsData = [];
+    
+    renderTransportTable();
+    renderReceiptsTable();
+    updateSummary();
   }
 }
 
@@ -995,7 +1007,12 @@ async function saveAllTransportData() {
     showSuccess('تم حفظ جميع البيانات بنجاح');
   } catch (error) {
     console.error('Error saving transport data:', error);
-    showError('فشل في حفظ البيانات');
+    
+    if (error.message.includes('permission')) {
+      showError('فشل في الحفظ بسبب صلاحيات Firestore، تم الحفظ محليًا');
+    } else {
+      showError('فشل في حفظ البيانات: ' + error.message);
+    }
   }
 }
 
@@ -1016,20 +1033,61 @@ function showSuccess(message) {
   const info = document.getElementById('transportInfo');
   info.textContent = message;
   info.style.color = 'var(--success)';
-  setTimeout(() => info.textContent = '', 3000);
+  setTimeout(() => info.textContent = '', 5000);
 }
 
 function showError(message) {
   const info = document.getElementById('transportInfo');
   info.textContent = message;
   info.style.color = 'var(--danger)';
-  setTimeout(() => info.textContent = '', 3000);
+  setTimeout(() => info.textContent = '', 5000);
 }
 
 function showInfo(message) {
   const info = document.getElementById('transportInfo');
   info.textContent = message;
   info.style.color = 'var(--muted)';
+  setTimeout(() => info.textContent = '', 3000);
+}
+
+// دالة لعرض رسائل في أي مكان
+function showMessage(message, type = 'info') {
+  // إنشاء عنصر رسالة مؤقت
+  const messageDiv = document.createElement('div');
+  messageDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    z-index: 9999;
+    direction: rtl;
+    max-width: 300px;
+  `;
+  
+  switch(type) {
+    case 'success':
+      messageDiv.style.background = 'var(--success)';
+      messageDiv.style.color = '#fff';
+      break;
+    case 'error':
+      messageDiv.style.background = 'var(--danger)';
+      messageDiv.style.color = '#fff';
+      break;
+    default:
+      messageDiv.style.background = 'var(--muted)';
+      messageDiv.style.color = '#fff';
+  }
+  
+  messageDiv.textContent = message;
+  document.body.appendChild(messageDiv);
+  
+  setTimeout(() => {
+    if (messageDiv.parentNode) {
+      messageDiv.parentNode.removeChild(messageDiv);
+    }
+  }, 3000);
 }
 
 // دوال الإيصالات

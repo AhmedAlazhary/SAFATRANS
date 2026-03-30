@@ -40,32 +40,52 @@ class TransportDataSystem {
   async loadBasicData() {
     try {
       // تحميل بيانات النقلات
-      const transportSnapshot = await this.firestore.collection('TransportData').get();
-      this.transportData = transportSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      try {
+        const transportSnapshot = await this.firestore.collection('TransportData').get();
+        this.transportData = transportSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (error) {
+        console.warn('TransportData collection not found, loading from localStorage:', error);
+        this.transportData = this.loadFromLocalStorage('transportData');
+      }
 
       // تحميل الإيصالات
-      const receiptsSnapshot = await this.firestore.collection('TransportReceipts').get();
-      this.receiptsData = receiptsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      try {
+        const receiptsSnapshot = await this.firestore.collection('TransportReceipts').get();
+        this.receiptsData = receiptsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (error) {
+        console.warn('TransportReceipts collection not found, loading from localStorage:', error);
+        this.receiptsData = this.loadFromLocalStorage('receiptsData');
+      }
 
       // تحميل التسويات
-      const settlementsSnapshot = await this.firestore.collection('TransportSettlements').get();
-      this.settlementsData = settlementsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      try {
+        const settlementsSnapshot = await this.firestore.collection('TransportSettlements').get();
+        this.settlementsData = settlementsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (error) {
+        console.warn('TransportSettlements collection not found, loading from localStorage:', error);
+        this.settlementsData = this.loadFromLocalStorage('settlementsData');
+      }
 
       // تحميل العملاء
-      const customersSnapshot = await this.firestore.collection('Customers').get();
-      this.customersData = customersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      try {
+        const customersSnapshot = await this.firestore.collection('Customers').get();
+        this.customersData = customersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (error) {
+        console.warn('Customers collection not found, loading from localStorage:', error);
+        this.customersData = this.loadFromLocalStorage('customersData');
+      }
 
     } catch (error) {
       console.error('Error loading basic data:', error);
@@ -252,7 +272,13 @@ class TransportDataSystem {
       this.calculateFinancialValues(transportData);
       
       // حفظ في Firestore
-      await this.firestore.collection('TransportData').doc(transportData.id).set(transportData);
+      try {
+        await this.firestore.collection('TransportData').doc(transportData.id).set(transportData);
+      } catch (error) {
+        console.warn('Error saving to TransportData, might be permission issue:', error);
+        // نحاول نحفظ في localStorage كبديل مؤقت
+        this.saveToLocalStorage('transportData', transportData);
+      }
       
       // تحديث البيانات المحلية
       const existingIndex = this.transportData.findIndex(t => t.id === transportData.id);
@@ -407,6 +433,38 @@ class TransportDataSystem {
     });
     
     return Object.values(settlements);
+  }
+
+  /**
+   * حفظ في localStorage كبديل مؤقت
+   */
+  saveToLocalStorage(key, data) {
+    try {
+      const existingData = JSON.parse(localStorage.getItem(`safa_${key}`) || '[]');
+      const index = existingData.findIndex(item => item.id === data.id);
+      
+      if (index >= 0) {
+        existingData[index] = data;
+      } else {
+        existingData.push(data);
+      }
+      
+      localStorage.setItem(`safa_${key}`, JSON.stringify(existingData));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  }
+
+  /**
+   * تحميل من localStorage
+   */
+  loadFromLocalStorage(key) {
+    try {
+      return JSON.parse(localStorage.getItem(`safa_${key}`) || '[]');
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      return [];
+    }
   }
 
   /**

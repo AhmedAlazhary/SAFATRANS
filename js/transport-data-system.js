@@ -175,38 +175,39 @@ class TransportDataSystem {
   }
 
   /**
-   * حساب القيم المالية تلقائيًا
+   * حساب القيم المالية الأساسية تلقائيًا
    */
   calculateFinancialValues(transport) {
     // الباقي = النولون الكامل - العهدة
-    transport.remaining = transport.totalFreight - transport.deposit;
+    transport.remaining = (transport.totalFreight || 0) - (transport.deposit || 0);
     
-    // النولون الصافي = النولون الكامل - المصروف
-    transport.netFreight = transport.totalFreight - transport.expenses;
+    // النولون الصافي = النولون الكامل - المصروف (المصروف يتم تحديثه من الإيصالات)
+    transport.netFreight = (transport.totalFreight || 0) - (transport.expenses || 0);
     
     // ربحية عملية النقل = النولون الصافي - القومسيون
-    transport.transportProfit = transport.netFreight - transport.commission;
-    
-    // تحديث الإيصالات المرتبطة
-    this.updateLinkedReceipts(transport);
+    transport.transportProfit = (transport.netFreight || 0) - (transport.commission || 0);
   }
 
   /**
-   * تحديث الإيصالات المرتبطة بنقل معين
+   * تحديث الإيصالات المرتبطة بنقل معين وإعادة حساب القيم
    */
   updateLinkedReceipts(transport) {
-    const linkedReceipts = this.receiptsData.filter(receipt => 
-      receipt.permitNumber === transport.permitNumber || 
-      receipt.billNumber === transport.billNumber
-    );
+    if (!transport.permitNumber && !transport.billNumber) {
+      transport.expenses = 0;
+    } else {
+      const linkedReceipts = this.receiptsData.filter(receipt => 
+        (transport.permitNumber && receipt.permitNumber === transport.permitNumber) || 
+        (transport.billNumber && receipt.billNumber === transport.billNumber)
+      );
+      
+      // جمع قيم الإيصالات
+      const totalReceipts = linkedReceipts.reduce((sum, receipt) => sum + (receipt.receiptAmount || 0), 0);
+      
+      // تحديث قيمة الإيصالات في بيان النقلات
+      transport.expenses = totalReceipts;
+    }
     
-    // جمع قيم الإيصالات
-    const totalReceipts = linkedReceipts.reduce((sum, receipt) => sum + (receipt.receiptAmount || 0), 0);
-    
-    // تحديث قيمة الإيصالات في بيان النقلات
-    transport.expenses = totalReceipts;
-    
-    // إعادة حساب القيم المالية
+    // إعادة حساب القيم المالية الأساسية
     this.calculateFinancialValues(transport);
   }
 

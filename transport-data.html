@@ -368,6 +368,13 @@ tr:last-child td {
   color: #c0392b;
 }
 
+.readonly-input {
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 700;
+  border-style: dashed;
+}
+
 @media (max-width: 768px) {
   .container {
     width: min(100% - 14px, 1400px);
@@ -796,6 +803,7 @@ function addNewTransportRow() {
     console.log('New row created:', newRow);
     
     currentTransportData.push(newRow);
+    transportSystem.transportData.push(newRow); // Sync with system data
     renderTransportTable();
     updateSummary();
     
@@ -1069,145 +1077,251 @@ function updateSummary() {
   document.getElementById('totalRemaining').textContent = summary.totalRemaining.toFixed(2);
 }
 
-// دوال المساعدة
-function showSuccess(message) {
+// Helper function to notify users consistently
+function notify(message, type = 'info') {
   const info = document.getElementById('transportInfo');
-  info.textContent = message;
-  info.style.color = 'var(--success)';
-  setTimeout(() => info.textContent = '', 5000);
-}
-
-function showError(message) {
-  const info = document.getElementById('transportInfo');
-  info.textContent = message;
-  info.style.color = 'var(--danger)';
-  setTimeout(() => info.textContent = '', 5000);
-}
-
-function showInfo(message) {
-  const info = document.getElementById('transportInfo');
-  info.textContent = message;
-  info.style.color = 'var(--muted)';
-  setTimeout(() => info.textContent = '', 3000);
-}
-
-// دالة لعرض رسائل في أي مكان
-function showMessage(message, type = 'info') {
-  // إنشاء عنصر رسالة مؤقت
-  const messageDiv = document.createElement('div');
-  messageDiv.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-weight: 700;
-    z-index: 9999;
-    direction: rtl;
-    max-width: 300px;
-  `;
-  
-  switch(type) {
-    case 'success':
-      messageDiv.style.background = 'var(--success)';
-      messageDiv.style.color = '#fff';
-      break;
-    case 'error':
-      messageDiv.style.background = 'var(--danger)';
-      messageDiv.style.color = '#fff';
-      break;
-    default:
-      messageDiv.style.background = 'var(--muted)';
-      messageDiv.style.color = '#fff';
+  if (info) {
+    info.textContent = message;
+    info.style.color = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : 'var(--muted)');
+    setTimeout(() => { if(info.textContent === message) info.textContent = ''; }, 5000);
   }
   
-  messageDiv.textContent = message;
-  document.body.appendChild(messageDiv);
+  // Also show a toast for better visibility
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 12px;
+    background: ${type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : '#333')};
+    color: #fff; font-weight: 700; z-index: 10000; direction: rtl; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.3s ease; transform: translateY(-20px); opacity: 0;
+  `;
+  toast.textContent = message;
+  document.body.appendChild(toast);
   
+  setTimeout(() => { toast.style.transform = 'translateY(0)'; toast.style.opacity = '1'; }, 10);
   setTimeout(() => {
-    if (messageDiv.parentNode) {
-      messageDiv.parentNode.removeChild(messageDiv);
-    }
-  }, 3000);
+    toast.style.transform = 'translateY(-20px)'; toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
 }
+
+// Optimized table rendering to maintain focus if possible
+let isRendering = false;
+function renderTransportTable() {
+  if (isRendering) return;
+  isRendering = true;
+  
+  const tbody = document.getElementById('transportTableBody');
+  const searchTerm = document.getElementById('transportSearch').value.toLowerCase();
+  
+  // Filter data
+  const filteredData = currentTransportData.filter(row => {
+    const searchFields = [
+      row.customerName || '',
+      row.permitNumber || '',
+      row.billNumber || '',
+      row.driverName || '',
+      row.carNumber || ''
+    ].join(' ').toLowerCase();
+    return searchFields.includes(searchTerm);
+  });
+  
+  // Remember focused element
+  const activeId = document.activeElement ? document.activeElement.closest('tr')?.dataset.id : null;
+  const activeField = document.activeElement ? document.activeElement.getAttribute('data-field') : null;
+
+  tbody.innerHTML = filteredData.map((row) => `
+    <tr data-id="${row.id}">
+      <td class="input-cell"><input type="number" data-field="settlementNumber" value="${row.settlementNumber || ''}" onchange="updateTransportField('${row.id}', 'settlementNumber', this.value)" placeholder="رقم"></td>
+      <td class="input-cell"><input type="number" data-field="settlementSequence" value="${row.settlementSequence || 1}" onchange="updateTransportField('${row.id}', 'settlementSequence', this.value)" placeholder="مسلسل"></td>
+      <td class="input-cell"><input type="text" data-field="customerName" value="${row.customerName || ''}" onchange="updateTransportField('${row.id}', 'customerName', this.value)" placeholder="العميل"></td>
+      <td class="input-cell">
+        <select data-field="permitType" onchange="updateTransportField('${row.id}', 'permitType', this.value)">
+          <option value="">اختر</option>
+          <option value="صادر" ${row.permitType === 'صادر' ? 'selected' : ''}>صادر</option>
+          <option value="وارد" ${row.permitType === 'وارد' ? 'selected' : ''}>وارد</option>
+        </select>
+      </td>
+      <td class="input-cell"><input type="text" data-field="permitNumber" value="${row.permitNumber || ''}" onchange="updateTransportField('${row.id}', 'permitNumber', this.value)" placeholder="رقم الإذن"></td>
+      <td class="input-cell"><input type="text" data-field="billType" value="${row.billType || ''}" onchange="updateTransportField('${row.id}', 'billType', this.value)" placeholder="نوع البوليصة"></td>
+      <td class="input-cell"><input type="text" data-field="billNumber" value="${row.billNumber || ''}" onchange="updateTransportField('${row.id}', 'billNumber', this.value)" placeholder="رقم البوليصة"></td>
+      <td class="input-cell">
+        <select data-field="transportType" onchange="updateTransportField('${row.id}', 'transportType', this.value)">
+          <option value="">اختر</option>
+          <option value="A" ${row.transportType === 'A' ? 'selected' : ''}>A</option>
+          <option value="D" ${row.transportType === 'D' ? 'selected' : ''}>D</option>
+          <option value="A/D" ${row.transportType === 'A/D' ? 'selected' : ''}>A/D</option>
+        </select>
+      </td>
+      <td class="input-cell"><input type="text" data-field="loadingLocation" value="${row.loadingLocation || ''}" onchange="updateTransportField('${row.id}', 'loadingLocation', this.value)" placeholder="مكان التحميل"></td>
+      <td class="input-cell"><input type="text" data-field="dischargeLocation" value="${row.dischargeLocation || ''}" onchange="updateTransportField('${row.id}', 'dischargeLocation', this.value)" placeholder="مكان التعتيق"></td>
+      <td class="input-cell"><input type="text" data-field="containerSize" value="${row.containerSize || ''}" onchange="updateTransportField('${row.id}', 'containerSize', this.value)" placeholder="الحجم"></td>
+      <td class="input-cell"><input type="text" data-field="agencyName" value="${row.agencyName || ''}" onchange="updateTransportField('${row.id}', 'agencyName', this.value)" placeholder="التوكيل"></td>
+      <td class="input-cell"><input type="text" data-field="driverName" value="${row.driverName || ''}" onchange="updateTransportField('${row.id}', 'driverName', this.value)" placeholder="السائق"></td>
+      <td class="input-cell"><input type="text" data-field="carNumber" value="${row.carNumber || ''}" onchange="updateTransportField('${row.id}', 'carNumber', this.value)" placeholder="رقم السيارة"></td>
+      <td class="input-cell"><input type="text" data-field="containerNumber" value="${row.containerNumber || ''}" onchange="updateTransportField('${row.id}', 'containerNumber', this.value)" placeholder="رقم الحاوية"></td>
+      <td class="input-cell"><input type="number" data-field="containerCount" value="${row.containerCount || 1}" onchange="updateTransportField('${row.id}', 'containerCount', this.value)" min="1" max="2"></td>
+      <td class="input-cell"><input type="number" data-field="deposit" value="${row.deposit || 0}" onchange="updateTransportField('${row.id}', 'deposit', this.value)" step="0.01"></td>
+      <td class="input-cell"><input type="number" data-field="totalFreight" value="${row.totalFreight || 0}" onchange="updateTransportField('${row.id}', 'totalFreight', this.value)" step="0.01"></td>
+      <td class="input-cell"><input type="number" data-field="expenses" value="${row.expenses || 0}" step="0.01" readonly class="readonly-input"></td>
+      <td class="input-cell"><input type="number" data-field="invoiceValue" value="${row.invoiceValue || 0}" onchange="updateTransportField('${row.id}', 'invoiceValue', this.value)" step="0.01"></td>
+      <td class="input-cell"><input type="number" data-field="customerExpenses" value="${row.customerExpenses || 0}" onchange="updateTransportField('${row.id}', 'customerExpenses', this.value)" step="0.01"></td>
+      <td class="input-cell"><input type="number" data-field="vat" value="${row.vat || 0}" onchange="updateTransportField('${row.id}', 'vat', this.value)" step="0.01"></td>
+      <td class="input-cell"><input type="number" data-field="transportProfit" value="${row.transportProfit || 0}" step="0.01" readonly class="readonly-input"></td>
+      <td class="input-cell"><input type="number" data-field="remaining" value="${row.remaining || 0}" step="0.01" readonly class="readonly-input"></td>
+      <td class="input-cell"><input type="number" data-field="commission" value="${row.commission || 0}" onchange="updateTransportField('${row.id}', 'commission', this.value)" step="0.01"></td>
+      <td class="input-cell"><input type="number" data-field="netFreight" value="${row.netFreight || 0}" step="0.01" readonly class="readonly-input"></td>
+      <td class="input-cell"><input type="text" data-field="paymentMethod" value="${row.paymentMethod || ''}" onchange="updateTransportField('${row.id}', 'paymentMethod', this.value)" placeholder="طريقة الصرف"></td>
+      <td class="input-cell"><input type="text" data-field="other" value="${row.other || ''}" onchange="updateTransportField('${row.id}', 'other', this.value)" placeholder="أخرى"></td>
+      <td class="actions-cell"><button class="mini-btn delete-btn" onclick="deleteTransportRow('${row.id}')">حذف</button></td>
+    </tr>
+  `).join('');
+
+  // Restore focus
+  if (activeId && activeField) {
+    const el = tbody.querySelector(`tr[data-id="${activeId}"] [data-field="${activeField}"]`);
+    if (el) el.focus();
+  }
+  
+  isRendering = false;
+}
+
+// تحديث حقل في بيانات النقلات
+async function updateTransportField(id, field, value) {
+  try {
+    const row = currentTransportData.find(r => r.id === id);
+    if (!row) return;
+    
+    // Update value with type conversion
+    const numericFields = ['settlementNumber', 'settlementSequence', 'containerCount', 'deposit', 'totalFreight', 'invoiceValue', 'customerExpenses', 'vat', 'commission'];
+    if (numericFields.includes(field)) {
+      row[field] = parseFloat(value) || 0;
+    } else {
+      row[field] = value;
+    }
+    
+    // Recalculate financial values
+    if (field === 'permitNumber' || field === 'billNumber') {
+      transportSystem.updateLinkedReceipts(row);
+    } else {
+      transportSystem.calculateFinancialValues(row);
+    }
+    
+    // Refresh table and summary
+    renderTransportTable();
+    updateSummary();
+    
+  } catch (error) {
+    console.error('Error updating transport field:', error);
+    notify('فشل في تحديث الحقل', 'error');
+  }
+}
+
+// حذف صف من بيانات النقلات
+async function deleteTransportRow(id) {
+  if (!confirm('هل أنت متأكد من حذف هذا الصف؟')) return;
+  
+  try {
+    await transportSystem.deleteTransportRow(id);
+    currentTransportData = currentTransportData.filter(row => row.id !== id);
+    renderTransportTable();
+    updateSummary();
+    notify('تم حذف الصف بنجاح', 'success');
+  } catch (error) {
+    console.error('Error deleting transport row:', error);
+    notify('فشل في حذف الصف', 'error');
+  }
+}
+
+// حفظ جميع بيانات النقلات
+async function saveAllTransportData() {
+  if (!transportSystem) return notify('النظام لم يتم تهيئته بعد', 'error');
+  if (currentTransportData.length === 0) return notify('لا توجد بيانات للحفظ', 'info');
+  
+  try {
+    notify('جاري الحفظ...', 'info');
+    for (const row of currentTransportData) {
+      await transportSystem.saveTransportRow(row);
+    }
+    notify('تم حفظ جميع البيانات بنجاح', 'success');
+  } catch (error) {
+    console.error('Error saving transport data:', error);
+    notify('فشل في حفظ البيانات: ' + error.message, 'error');
+  }
+}
+
+// تحديث الملخص
+function updateSummary() {
+  if (!transportSystem) return;
+  const summary = transportSystem.calculateDailySummary(currentTransportData);
+  
+  const updateEl = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = typeof val === 'number' ? val.toLocaleString('ar-EG', {minimumFractionDigits: 2}) : val;
+  };
+
+  updateEl('totalTransports', summary.totalTransports);
+  updateEl('totalFreight', summary.totalFreight);
+  updateEl('totalExpenses', summary.totalExpenses);
+  updateEl('totalProfit', summary.totalProfit);
+  updateEl('totalDeposits', summary.totalDeposits);
+  updateEl('totalRemaining', summary.totalRemaining);
+}
+
+// دوال المساعدة للواجهة القديمة (للتوافق)
+function showSuccess(m) { notify(m, 'success'); }
+function showError(m) { notify(m, 'error'); }
+function showInfo(m) { notify(m, 'info'); }
+function showMessage(m, t) { notify(m, t); }
 
 // دوال الإيصالات
 function addNewReceipt() {
-  const receiptType = document.getElementById('receiptType').value;
-  const receiptDate = document.getElementById('receiptDate').value;
+  const type = document.getElementById('receiptType').value;
+  const date = document.getElementById('receiptDate').value || selectedDate;
   
-  if (!receiptType) {
-    showError('يرجى اختيار نوع الإيصال');
-    return;
-  }
+  if (!type) return notify('يرجى اختيار نوع الإيصال', 'error');
   
-  const newReceipt = transportSystem.createNewReceipt({
-    receiptType: receiptType,
-    receiptAmount: 0,
-    date: receiptDate
-  });
-  
+  const newReceipt = transportSystem.createNewReceipt({ receiptType: type, date: date });
   currentReceiptsData.push(newReceipt);
+  transportSystem.receiptsData.push(newReceipt); // Sync with system data
   renderReceiptsTable();
-  showSuccess('تم إضافة إيصال جديد');
+  notify('تم إضافة إيصال جديد', 'success');
 }
 
 async function saveAllReceipts() {
   try {
-    showInfo('جاري حفظ الإيصالات...');
-    
-    // حفظ كل الإيصالات
+    notify('جاري حفظ الإيصالات...', 'info');
     for (const receipt of currentReceiptsData) {
       await transportSystem.saveReceipt(receipt);
     }
-    
-    showSuccess('تم حفظ جميع الإيصالات بنجاح');
+    notify('تم حفظ جميع الإيصالات بنجاح', 'success');
+    // Refresh transports because receipts might affect expenses
+    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
+    renderTransportTable();
+    updateSummary();
   } catch (error) {
     console.error('Error saving receipts:', error);
-    showError('فشل في حفظ الإيصالات');
+    notify('فشل في حفظ الإيصالات', 'error');
   }
 }
 
 function renderReceiptsTable() {
   const tbody = document.getElementById('receiptsTableBody');
-  
+  if (!tbody) return;
+
   tbody.innerHTML = currentReceiptsData.map((receipt) => `
     <tr data-id="${receipt.id}">
-      <td>
-        <input type="date" value="${receipt.date || ''}" 
-               onchange="updateReceiptField('${receipt.id}', 'date', this.value)">
-      </td>
+      <td><input type="date" value="${receipt.date || ''}" onchange="updateReceiptField('${receipt.id}', 'date', this.value)"></td>
       <td>
         <select onchange="updateReceiptField('${receipt.id}', 'receiptType', this.value)">
           <option value="">اختر</option>
-          ${transportSystem.receiptTypes.map(type => 
-            `<option value="${type}" ${receipt.receiptType === type ? 'selected' : ''}>${type}</option>`
-          ).join('')}
+          ${transportSystem.receiptTypes.map(t => `<option value="${t}" ${receipt.receiptType === t ? 'selected' : ''}>${t}</option>`).join('')}
         </select>
       </td>
-      <td>
-        <input type="number" value="${receipt.receiptAmount || 0}" 
-               onchange="updateReceiptField('${receipt.id}', 'receiptAmount', this.value)"
-               step="0.01" placeholder="0.00">
-      </td>
-      <td>
-        <input type="text" value="${receipt.permitNumber || ''}" 
-               onchange="updateReceiptField('${receipt.id}', 'permitNumber', this.value)"
-               placeholder="رقم الإذن">
-      </td>
-      <td>
-        <input type="text" value="${receipt.billNumber || ''}" 
-               onchange="updateReceiptField('${receipt.id}', 'billNumber', this.value)"
-               placeholder="رقم البوليصة">
-      </td>
-      <td>
-        <input type="text" value="${receipt.description || ''}" 
-               onchange="updateReceiptField('${receipt.id}', 'description', this.value)"
-               placeholder="الوصف">
-      </td>
-      <td class="actions-cell">
-        <button class="mini-btn delete-btn" onclick="deleteReceipt('${receipt.id}')">حذف</button>
-      </td>
+      <td><input type="number" value="${receipt.receiptAmount || 0}" onchange="updateReceiptField('${receipt.id}', 'receiptAmount', this.value)" step="0.01"></td>
+      <td><input type="text" value="${receipt.permitNumber || ''}" onchange="updateReceiptField('${receipt.id}', 'permitNumber', this.value)" placeholder="رقم الإذن"></td>
+      <td><input type="text" value="${receipt.billNumber || ''}" onchange="updateReceiptField('${receipt.id}', 'billNumber', this.value)" placeholder="رقم البوليصة"></td>
+      <td><input type="text" value="${receipt.description || ''}" onchange="updateReceiptField('${receipt.id}', 'description', this.value)" placeholder="الوصف"></td>
+      <td class="actions-cell"><button class="mini-btn delete-btn" onclick="deleteReceipt('${receipt.id}')">حذف</button></td>
     </tr>
   `).join('');
 }
@@ -1217,37 +1331,35 @@ async function updateReceiptField(id, field, value) {
     const receipt = currentReceiptsData.find(r => r.id === id);
     if (!receipt) return;
     
-    // تحديث القيمة
-    if (field === 'receiptAmount') {
-      receipt[field] = parseFloat(value) || 0;
-    } else {
-      receipt[field] = value;
-    }
+    receipt[field] = field === 'receiptAmount' ? (parseFloat(value) || 0) : value;
     
-    // إذا تم تغيير رقم الإذن أو البوليصة، تحديث الربط
-    if (field === 'permitNumber' || field === 'billNumber') {
+    if (field === 'permitNumber' || field === 'billNumber' || field === 'receiptAmount') {
       await transportSystem.updateAllLinkedTransports(receipt.permitNumber, receipt.billNumber);
+      // Reload current transport data to reflect changes
+      currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
       renderTransportTable();
       updateSummary();
     }
-    
   } catch (error) {
     console.error('Error updating receipt field:', error);
-    showError('فشل في تحديث حقل الإيصال');
+    notify('فشل في تحديث حقل الإيصال', 'error');
   }
 }
 
 async function deleteReceipt(id) {
   if (!confirm('هل أنت متأكد من حذف هذا الإيصال؟')) return;
-  
   try {
     await transportSystem.deleteReceipt(id);
-    currentReceiptsData = currentReceiptsData.filter(receipt => receipt.id !== id);
+    currentReceiptsData = currentReceiptsData.filter(r => r.id !== id);
     renderReceiptsTable();
-    showSuccess('تم حذف الإيصال بنجاح');
+    // Refresh transports
+    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
+    renderTransportTable();
+    updateSummary();
+    notify('تم حذف الإيصال بنجاح', 'success');
   } catch (error) {
     console.error('Error deleting receipt:', error);
-    showError('فشل في حذف الإيصال');
+    notify('فشل في حذف الإيصال', 'error');
   }
 }
 

@@ -648,7 +648,7 @@ tr:last-child td {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./js/firebase-config.js";
 import { mountAppNav } from "./js/app-nav.js";
 import TransportDataSystem from "./js/transport-data-system.js";
@@ -657,15 +657,6 @@ import TransportDataSystem from "./js/transport-data-system.js";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestore = getFirestore(app);
-
-// Helper function to generate UUID
-function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
 
 // متغيرات عامة
 let transportSystem = null;
@@ -676,32 +667,25 @@ let selectedDate = new Date().toISOString().split('T')[0];
 // تهيئة الصفحة
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    // تثبيت شريط التنقل
     mountAppNav("#global-app-nav", "transport");
     
-    // التحقق من المستخدم
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = "index.html";
         return;
       }
       
-      // تهيئة نظام بيانات النقلات
       transportSystem = new TransportDataSystem(firestore, auth);
-      transportSystem.currentUser = user; // تعيين المستخدم مباشرة
+      transportSystem.currentUser = user;
       
-      // تحميل البيانات الأولية
       await loadInitialData();
-      
-      // إعداد الأحداث
       setupEventListeners();
       
-      // عرض التاريخ الحالي
       document.getElementById('dateDisplay').textContent = selectedDate;
       document.getElementById('transportDate').value = selectedDate;
+      document.getElementById('receiptDate').value = selectedDate;
     });
     
-    // زر تسجيل الخروج
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = "index.html";
@@ -709,423 +693,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     
   } catch (error) {
     console.error('Error initializing page:', error);
-    showError('فشل في تهيئة الصفحة');
+    notify('فشل في تهيئة الصفحة', 'error');
   }
 });
 
-// تحميل البيانات الأولية
 async function loadInitialData() {
   try {
-    showInfo('جاري تحميل البيانات...');
-    
+    notify('جاري تحميل البيانات...', 'info');
     await transportSystem.loadBasicData();
-    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
-    currentReceiptsData = transportSystem.receiptsData.filter(receipt => receipt.date === selectedDate);
-    
-    renderTransportTable();
-    renderReceiptsTable();
-    updateSummary();
-    
-    showSuccess('تم تحميل البيانات بنجاح');
+    refreshLocalData();
+    notify('تم تحميل البيانات بنجاح', 'success');
   } catch (error) {
     console.error('Error loading initial data:', error);
-    showError('فشل في تحميل البيانات، سيتم استخدام البيانات المحلية');
-    
-    // استخدام بيانات تجريبية في حالة الفشل
-    currentTransportData = [];
-    currentReceiptsData = [];
-    
-    renderTransportTable();
-    renderReceiptsTable();
-    updateSummary();
+    notify('فشل في تحميل البيانات من السيرفر', 'error');
+    refreshLocalData();
   }
 }
 
-// إعداد الأحداث
+function refreshLocalData() {
+  currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
+  currentReceiptsData = transportSystem.receiptsData.filter(receipt => receipt.date === selectedDate);
+  renderTransportTable();
+  renderReceiptsTable();
+  updateSummary();
+}
+
 function setupEventListeners() {
-  // تبويبات الصفحة
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tabId = btn.dataset.tab;
-      switchTab(tabId);
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === tabId));
     });
   });
 }
 
-// تبديل التبويبات
-function switchTab(tabId) {
-  // تحديث الأزرار
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabId);
-  });
-  
-  // تحديث الأقسام
-  document.querySelectorAll('.section').forEach(section => {
-    section.classList.toggle('active', section.id === tabId);
-  });
-}
-
-// تغيير التاريخ
 async function onDateChange() {
   selectedDate = document.getElementById('transportDate').value;
   document.getElementById('dateDisplay').textContent = selectedDate;
   document.getElementById('receiptDate').value = selectedDate;
-  
-  try {
-    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
-    currentReceiptsData = transportSystem.receiptsData.filter(receipt => receipt.date === selectedDate);
-    
-    renderTransportTable();
-    renderReceiptsTable();
-    updateSummary();
-  } catch (error) {
-    console.error('Error changing date:', error);
-    showError('فشل في تغيير التاريخ');
-  }
+  refreshLocalData();
 }
 
-// إضافة صف جديد في بيانات النقلات
+// --- Transport Functions ---
 function addNewTransportRow() {
-  console.log('addNewTransportRow called');
-  console.log('transportSystem:', transportSystem);
-  console.log('selectedDate:', selectedDate);
-  
-  if (!transportSystem) {
-    showError('النظام لم يتم تهيئته بعد، يرجى الانتظار');
-    return;
-  }
-  
+  if (!transportSystem) return notify('النظام غير جاهز', 'error');
   try {
-    const newRow = transportSystem.createNewTransportRow({
-      date: selectedDate
-    });
-    
-    console.log('New row created:', newRow);
-    
+    const newRow = transportSystem.createNewTransportRow({ date: selectedDate });
     currentTransportData.push(newRow);
-    transportSystem.transportData.push(newRow); // Sync with system data
+    transportSystem.transportData.push(newRow);
     renderTransportTable();
     updateSummary();
-    
-    showSuccess('تم إضافة صف جديد');
+    notify('تم إضافة صف جديد', 'success');
   } catch (error) {
-    console.error('Error adding new row:', error);
-    showError('فشل في إضافة صف جديد: ' + error.message);
+    notify('فشل إضافة صف: ' + error.message, 'error');
   }
 }
 
-// عرض جدول بيانات النقلات
-function renderTransportTable() {
-  const tbody = document.getElementById('transportTableBody');
-  const searchTerm = document.getElementById('transportSearch').value.toLowerCase();
-  
-  // تصفية البيانات
-  const filteredData = currentTransportData.filter(row => {
-    const searchFields = [
-      row.customerName || '',
-      row.permitNumber || '',
-      row.billNumber || '',
-      row.driverName || '',
-      row.carNumber || ''
-    ].join(' ').toLowerCase();
-    
-    return searchFields.includes(searchTerm);
-  });
-  
-  tbody.innerHTML = filteredData.map((row, index) => `
-    <tr data-id="${row.id}">
-      <td class="input-cell">
-        <input type="number" value="${row.settlementNumber || ''}" 
-               onchange="updateTransportField('${row.id}', 'settlementNumber', this.value)"
-               placeholder="رقم التسوية">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.settlementSequence || 1}" 
-               onchange="updateTransportField('${row.id}', 'settlementSequence', this.value)"
-               placeholder="المسلسل">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.customerName || ''}" 
-               onchange="updateTransportField('${row.id}', 'customerName', this.value)"
-               placeholder="العميل">
-      </td>
-      <td class="input-cell">
-        <select onchange="updateTransportField('${row.id}', 'permitType', this.value)">
-          <option value="">اختر</option>
-          <option value="صادر" ${row.permitType === 'صادر' ? 'selected' : ''}>صادر</option>
-          <option value="وارد" ${row.permitType === 'وارد' ? 'selected' : ''}>وارد</option>
-        </select>
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.permitNumber || ''}" 
-               onchange="updateTransportField('${row.id}', 'permitNumber', this.value)"
-               placeholder="رقم الإذن">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.billType || ''}" 
-               onchange="updateTransportField('${row.id}', 'billType', this.value)"
-               placeholder="نوع البوليصة">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.billNumber || ''}" 
-               onchange="updateTransportField('${row.id}', 'billNumber', this.value)"
-               placeholder="رقم البوليصة">
-      </td>
-      <td class="input-cell">
-        <select onchange="updateTransportField('${row.id}', 'transportType', this.value)">
-          <option value="">اختر</option>
-          <option value="A" ${row.transportType === 'A' ? 'selected' : ''}>A</option>
-          <option value="D" ${row.transportType === 'D' ? 'selected' : ''}>D</option>
-          <option value="A/D" ${row.transportType === 'A/D' ? 'selected' : ''}>A/D</option>
-        </select>
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.loadingLocation || ''}" 
-               onchange="updateTransportField('${row.id}', 'loadingLocation', this.value)"
-               placeholder="مكان التحميل">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.dischargeLocation || ''}" 
-               onchange="updateTransportField('${row.id}', 'dischargeLocation', this.value)"
-               placeholder="مكان التعتيق">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.containerSize || ''}" 
-               onchange="updateTransportField('${row.id}', 'containerSize', this.value)"
-               placeholder="الحجم">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.agencyName || ''}" 
-               onchange="updateTransportField('${row.id}', 'agencyName', this.value)"
-               placeholder="التوكيل">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.driverName || ''}" 
-               onchange="updateTransportField('${row.id}', 'driverName', this.value)"
-               placeholder="السائق">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.carNumber || ''}" 
-               onchange="updateTransportField('${row.id}', 'carNumber', this.value)"
-               placeholder="رقم السيارة">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.containerNumber || ''}" 
-               onchange="updateTransportField('${row.id}', 'containerNumber', this.value)"
-               placeholder="رقم الحاوية">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.containerCount || 1}" 
-               onchange="updateTransportField('${row.id}', 'containerCount', this.value)"
-               min="1" max="2">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.deposit || 0}" 
-               onchange="updateTransportField('${row.id}', 'deposit', this.value)"
-               step="0.01">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.totalFreight || 0}" 
-               onchange="updateTransportField('${row.id}', 'totalFreight', this.value)"
-               step="0.01">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.expenses || 0}" 
-               onchange="updateTransportField('${row.id}', 'expenses', this.value)"
-               step="0.01" readonly>
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.invoiceValue || 0}" 
-               onchange="updateTransportField('${row.id}', 'invoiceValue', this.value)"
-               step="0.01">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.customerExpenses || 0}" 
-               onchange="updateTransportField('${row.id}', 'customerExpenses', this.value)"
-               step="0.01">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.vat || 0}" 
-               onchange="updateTransportField('${row.id}', 'vat', this.value)"
-               step="0.01">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.transportProfit || 0}" 
-               onchange="updateTransportField('${row.id}', 'transportProfit', this.value)"
-               step="0.01" readonly>
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.remaining || 0}" 
-               onchange="updateTransportField('${row.id}', 'remaining', this.value)"
-               step="0.01" readonly>
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.commission || 0}" 
-               onchange="updateTransportField('${row.id}', 'commission', this.value)"
-               step="0.01">
-      </td>
-      <td class="input-cell">
-        <input type="number" value="${row.netFreight || 0}" 
-               onchange="updateTransportField('${row.id}', 'netFreight', this.value)"
-               step="0.01" readonly>
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.paymentMethod || ''}" 
-               onchange="updateTransportField('${row.id}', 'paymentMethod', this.value)"
-               placeholder="طريقة الصرف">
-      </td>
-      <td class="input-cell">
-        <input type="text" value="${row.other || ''}" 
-               onchange="updateTransportField('${row.id}', 'other', this.value)"
-               placeholder="أخرى">
-      </td>
-      <td class="actions-cell">
-        <button class="mini-btn delete-btn" onclick="deleteTransportRow('${row.id}')">حذف</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-// تحديث حقل في بيانات النقلات
-async function updateTransportField(id, field, value) {
-  try {
-    const row = currentTransportData.find(r => r.id === id);
-    if (!row) return;
-    
-    // تحديث القيمة
-    if (field === 'settlementNumber' || field === 'settlementSequence' || 
-        field === 'deposit' || field === 'totalFreight' || field === 'commission') {
-      row[field] = parseFloat(value) || 0;
-    } else {
-      row[field] = value;
-    }
-    
-    // إعادة الحسابات المالية
-    transportSystem.calculateFinancialValues(row);
-    
-    // تحديث الجدول
-    renderTransportTable();
-    updateSummary();
-    
-  } catch (error) {
-    console.error('Error updating transport field:', error);
-    showError('فشل في تحديث الحقل');
-  }
-}
-
-// حذف صف من بيانات النقلات
-async function deleteTransportRow(id) {
-  if (!confirm('هل أنت متأكد من حذف هذا الصف؟')) return;
-  
-  try {
-    await transportSystem.deleteTransportRow(id);
-    currentTransportData = currentTransportData.filter(row => row.id !== id);
-    renderTransportTable();
-    updateSummary();
-    showSuccess('تم حذف الصف بنجاح');
-  } catch (error) {
-    console.error('Error deleting transport row:', error);
-    showError('فشل في حذف الصف');
-  }
-}
-
-// حفظ جميع بيانات النقلات
-async function saveAllTransportData() {
-  console.log('saveAllTransportData called');
-  console.log('transportSystem:', transportSystem);
-  console.log('currentTransportData:', currentTransportData);
-  
-  if (!transportSystem) {
-    showError('النظام لم يتم تهيئته بعد، يرجى الانتظار');
-    return;
-  }
-  
-  if (currentTransportData.length === 0) {
-    showError('لا توجد بيانات للحفظ');
-    return;
-  }
-  
-  try {
-    showInfo('جاري الحفظ...');
-    
-    // حفظ كل الصفوف
-    for (const row of currentTransportData) {
-      await transportSystem.saveTransportRow(row);
-    }
-    
-    showSuccess('تم حفظ جميع البيانات بنجاح');
-  } catch (error) {
-    console.error('Error saving transport data:', error);
-    
-    if (error.message.includes('permission')) {
-      showError('فشل في الحفظ بسبب صلاحيات Firestore، تم الحفظ محليًا');
-    } else {
-      showError('فشل في حفظ البيانات: ' + error.message);
-    }
-  }
-}
-
-// تحديث الملخص
-function updateSummary() {
-  const summary = transportSystem.calculateDailySummary(currentTransportData);
-  
-  document.getElementById('totalTransports').textContent = summary.totalTransports;
-  document.getElementById('totalFreight').textContent = summary.totalFreight.toFixed(2);
-  document.getElementById('totalExpenses').textContent = summary.totalExpenses.toFixed(2);
-  document.getElementById('totalProfit').textContent = summary.totalProfit.toFixed(2);
-  document.getElementById('totalDeposits').textContent = summary.totalDeposits.toFixed(2);
-  document.getElementById('totalRemaining').textContent = summary.totalRemaining.toFixed(2);
-}
-
-// Helper function to notify users consistently
-function notify(message, type = 'info') {
-  const info = document.getElementById('transportInfo');
-  if (info) {
-    info.textContent = message;
-    info.style.color = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : 'var(--muted)');
-    setTimeout(() => { if(info.textContent === message) info.textContent = ''; }, 5000);
-  }
-  
-  // Also show a toast for better visibility
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 12px;
-    background: ${type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : '#333')};
-    color: #fff; font-weight: 700; z-index: 10000; direction: rtl; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: all 0.3s ease; transform: translateY(-20px); opacity: 0;
-  `;
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  
-  setTimeout(() => { toast.style.transform = 'translateY(0)'; toast.style.opacity = '1'; }, 10);
-  setTimeout(() => {
-    toast.style.transform = 'translateY(-20px)'; toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
-}
-
-// Optimized table rendering to maintain focus if possible
 let isRendering = false;
 function renderTransportTable() {
   if (isRendering) return;
   isRendering = true;
-  
   const tbody = document.getElementById('transportTableBody');
   const searchTerm = document.getElementById('transportSearch').value.toLowerCase();
   
-  // Filter data
   const filteredData = currentTransportData.filter(row => {
-    const searchFields = [
-      row.customerName || '',
-      row.permitNumber || '',
-      row.billNumber || '',
-      row.driverName || '',
-      row.carNumber || ''
-    ].join(' ').toLowerCase();
-    return searchFields.includes(searchTerm);
+    return [row.customerName, row.permitNumber, row.billNumber, row.driverName, row.carNumber]
+      .join(' ').toLowerCase().includes(searchTerm);
   });
-  
-  // Remember focused element
+
   const activeId = document.activeElement ? document.activeElement.closest('tr')?.dataset.id : null;
   const activeField = document.activeElement ? document.activeElement.getAttribute('data-field') : null;
 
@@ -1176,138 +812,71 @@ function renderTransportTable() {
     </tr>
   `).join('');
 
-  // Restore focus
   if (activeId && activeField) {
     const el = tbody.querySelector(`tr[data-id="${activeId}"] [data-field="${activeField}"]`);
     if (el) el.focus();
   }
-  
   isRendering = false;
 }
 
-// تحديث حقل في بيانات النقلات
 async function updateTransportField(id, field, value) {
   try {
     const row = currentTransportData.find(r => r.id === id);
     if (!row) return;
-    
-    // Update value with type conversion
     const numericFields = ['settlementNumber', 'settlementSequence', 'containerCount', 'deposit', 'totalFreight', 'invoiceValue', 'customerExpenses', 'vat', 'commission'];
-    if (numericFields.includes(field)) {
-      row[field] = parseFloat(value) || 0;
-    } else {
-      row[field] = value;
-    }
+    row[field] = numericFields.includes(field) ? (parseFloat(value) || 0) : value;
     
-    // Recalculate financial values
     if (field === 'permitNumber' || field === 'billNumber') {
       transportSystem.updateLinkedReceipts(row);
     } else {
       transportSystem.calculateFinancialValues(row);
     }
-    
-    // Refresh table and summary
     renderTransportTable();
     updateSummary();
-    
   } catch (error) {
-    console.error('Error updating transport field:', error);
-    notify('فشل في تحديث الحقل', 'error');
+    notify('خطأ في التحديث', 'error');
   }
 }
 
-// حذف صف من بيانات النقلات
 async function deleteTransportRow(id) {
-  if (!confirm('هل أنت متأكد من حذف هذا الصف؟')) return;
-  
+  if (!confirm('هل أنت متأكد؟')) return;
   try {
     await transportSystem.deleteTransportRow(id);
-    currentTransportData = currentTransportData.filter(row => row.id !== id);
+    currentTransportData = currentTransportData.filter(r => r.id !== id);
+    transportSystem.transportData = transportSystem.transportData.filter(r => r.id !== id);
     renderTransportTable();
     updateSummary();
-    notify('تم حذف الصف بنجاح', 'success');
+    notify('تم الحذف', 'success');
   } catch (error) {
-    console.error('Error deleting transport row:', error);
-    notify('فشل في حذف الصف', 'error');
+    notify('فشل الحذف', 'error');
   }
 }
 
-// حفظ جميع بيانات النقلات
 async function saveAllTransportData() {
-  if (!transportSystem) return notify('النظام لم يتم تهيئته بعد', 'error');
-  if (currentTransportData.length === 0) return notify('لا توجد بيانات للحفظ', 'info');
-  
+  if (!transportSystem || currentTransportData.length === 0) return notify('لا توجد بيانات', 'info');
   try {
     notify('جاري الحفظ...', 'info');
-    for (const row of currentTransportData) {
-      await transportSystem.saveTransportRow(row);
-    }
-    notify('تم حفظ جميع البيانات بنجاح', 'success');
+    for (const row of currentTransportData) await transportSystem.saveTransportRow(row);
+    notify('تم الحفظ بنجاح', 'success');
   } catch (error) {
-    console.error('Error saving transport data:', error);
-    notify('فشل في حفظ البيانات: ' + error.message, 'error');
+    notify('فشل الحفظ: ' + error.message, 'error');
   }
 }
 
-// تحديث الملخص
-function updateSummary() {
-  if (!transportSystem) return;
-  const summary = transportSystem.calculateDailySummary(currentTransportData);
-  
-  const updateEl = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = typeof val === 'number' ? val.toLocaleString('ar-EG', {minimumFractionDigits: 2}) : val;
-  };
-
-  updateEl('totalTransports', summary.totalTransports);
-  updateEl('totalFreight', summary.totalFreight);
-  updateEl('totalExpenses', summary.totalExpenses);
-  updateEl('totalProfit', summary.totalProfit);
-  updateEl('totalDeposits', summary.totalDeposits);
-  updateEl('totalRemaining', summary.totalRemaining);
-}
-
-// دوال المساعدة للواجهة القديمة (للتوافق)
-function showSuccess(m) { notify(m, 'success'); }
-function showError(m) { notify(m, 'error'); }
-function showInfo(m) { notify(m, 'info'); }
-function showMessage(m, t) { notify(m, t); }
-
-// دوال الإيصالات
+// --- Receipt Functions ---
 function addNewReceipt() {
   const type = document.getElementById('receiptType').value;
-  const date = document.getElementById('receiptDate').value || selectedDate;
-  
-  if (!type) return notify('يرجى اختيار نوع الإيصال', 'error');
-  
-  const newReceipt = transportSystem.createNewReceipt({ receiptType: type, date: date });
+  if (!type) return notify('اختر النوع', 'error');
+  const newReceipt = transportSystem.createNewReceipt({ receiptType: type, date: selectedDate });
   currentReceiptsData.push(newReceipt);
-  transportSystem.receiptsData.push(newReceipt); // Sync with system data
+  transportSystem.receiptsData.push(newReceipt);
   renderReceiptsTable();
-  notify('تم إضافة إيصال جديد', 'success');
-}
-
-async function saveAllReceipts() {
-  try {
-    notify('جاري حفظ الإيصالات...', 'info');
-    for (const receipt of currentReceiptsData) {
-      await transportSystem.saveReceipt(receipt);
-    }
-    notify('تم حفظ جميع الإيصالات بنجاح', 'success');
-    // Refresh transports because receipts might affect expenses
-    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
-    renderTransportTable();
-    updateSummary();
-  } catch (error) {
-    console.error('Error saving receipts:', error);
-    notify('فشل في حفظ الإيصالات', 'error');
-  }
+  notify('تم الإضافة', 'success');
 }
 
 function renderReceiptsTable() {
   const tbody = document.getElementById('receiptsTableBody');
   if (!tbody) return;
-
   tbody.innerHTML = currentReceiptsData.map((receipt) => `
     <tr data-id="${receipt.id}">
       <td><input type="date" value="${receipt.date || ''}" onchange="updateReceiptField('${receipt.id}', 'date', this.value)"></td>
@@ -1330,332 +899,129 @@ async function updateReceiptField(id, field, value) {
   try {
     const receipt = currentReceiptsData.find(r => r.id === id);
     if (!receipt) return;
-    
     receipt[field] = field === 'receiptAmount' ? (parseFloat(value) || 0) : value;
-    
-    if (field === 'permitNumber' || field === 'billNumber' || field === 'receiptAmount') {
+    if (['permitNumber', 'billNumber', 'receiptAmount'].includes(field)) {
       await transportSystem.updateAllLinkedTransports(receipt.permitNumber, receipt.billNumber);
-      // Reload current transport data to reflect changes
-      currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
-      renderTransportTable();
-      updateSummary();
+      refreshLocalData();
     }
   } catch (error) {
-    console.error('Error updating receipt field:', error);
-    notify('فشل في تحديث حقل الإيصال', 'error');
+    notify('خطأ في التحديث', 'error');
   }
 }
 
 async function deleteReceipt(id) {
-  if (!confirm('هل أنت متأكد من حذف هذا الإيصال؟')) return;
+  if (!confirm('هل أنت متأكد؟')) return;
   try {
     await transportSystem.deleteReceipt(id);
     currentReceiptsData = currentReceiptsData.filter(r => r.id !== id);
-    renderReceiptsTable();
-    // Refresh transports
-    currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
-    renderTransportTable();
-    updateSummary();
-    notify('تم حذف الإيصال بنجاح', 'success');
+    transportSystem.receiptsData = transportSystem.receiptsData.filter(r => r.id !== id);
+    refreshLocalData();
+    notify('تم الحذف', 'success');
   } catch (error) {
-    console.error('Error deleting receipt:', error);
-    notify('فشل في حذف الإيصال', 'error');
+    notify('فشل الحذف', 'error');
   }
 }
 
-function exportToExcel() {
-  console.log('exportToExcel called');
-  console.log('currentTransportData:', currentTransportData);
-  
-  if (!currentTransportData || currentTransportData.length === 0) {
-    showError('لا توجد بيانات للتصدير');
-    return;
-  }
-  
+async function saveAllReceipts() {
   try {
-    showInfo('جاري تصدير البيانات...');
-    
-    // تحضير البيانات للتصدير
-    const exportData = currentTransportData.map(row => ({
-      'التاريخ': row.date || '',
-      'رقم التسوية': row.settlementNumber || '',
-      'المسلسل': row.settlementSequence || '',
-      'العميل': row.customerName || '',
-      'نوع الإذن': row.permitType || '',
-      'رقم الإذن': row.permitNumber || '',
-      'نوع البوليصة': row.billType || '',
-      'رقم البوليصة': row.billNumber || '',
-      'A/D': row.transportType || '',
-      'مكان التحميل': row.loadingLocation || '',
-      'مكان التعتيق': row.dischargeLocation || '',
-      'الحجم': row.containerSize || '',
-      'التوكيل': row.agencyName || '',
-      'السائق': row.driverName || '',
-      'رقم السيارة': row.carNumber || '',
-      'رقم الحاوية': row.containerNumber || '',
-      'عدد الحاويات': row.containerCount || 1,
-      'العهدة': row.deposit || 0,
-      'النولون': row.totalFreight || 0,
-      'المصروفات': row.expenses || 0,
-      'قيمة الفاتورة': row.invoiceValue || 0,
-      'مصروف العميل': row.customerExpenses || 0,
-      'الضريبة': row.vat || 0,
-      'الربح': row.transportProfit || 0,
-      'الباقي': row.remaining || 0,
-      'القومسيون': row.commission || 0,
-      'النولون الصافي': row.netFreight || 0,
-      'طريقة الصرف': row.paymentMethod || '',
-      'أخرى': row.other || ''
-    }));
-    
-    // تحويل إلى CSV
-    const headers = Object.keys(exportData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...exportData.map(row => 
-        headers.map(header => `"${row[header] || ''}"`).join(',')
-      )
-    ].join('\n');
-    
-    // إنشاء ملف وتحميله
+    notify('جاري الحفظ...', 'info');
+    for (const r of currentReceiptsData) await transportSystem.saveReceipt(r);
+    notify('تم الحفظ', 'success');
+    refreshLocalData();
+  } catch (error) {
+    notify('فشل الحفظ', 'error');
+  }
+}
+
+// --- Report Functions ---
+function exportToExcel() {
+  if (currentTransportData.length === 0) return notify('لا توجد بيانات', 'info');
+  try {
+    const headers = ['التاريخ', 'التسوية', 'المسلسل', 'العميل', 'رقم الإذن', 'رقم البوليصة', 'الحجم', 'السائق', 'رقم السيارة', 'العهدة', 'النولون', 'المصروفات', 'الربح', 'الباقي'];
+    const csvContent = [headers.join(','), ...currentTransportData.map(r => [r.date, r.settlementNumber, r.settlementSequence, r.customerName, r.permitNumber, r.billNumber, r.containerSize, r.driverName, r.carNumber, r.deposit, r.totalFreight, r.expenses, r.transportProfit, r.remaining].join(','))].join('\n');
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `بيانات_النقلات_${selectedDate}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `نقلات_${selectedDate}.csv`;
     link.click();
-    document.body.removeChild(link);
-    
-    showSuccess('تم تصدير البيانات بنجاح');
+    notify('تم التصدير', 'success');
   } catch (error) {
-    console.error('Error exporting to Excel:', error);
-    showError('فشل في تصدير البيانات: ' + error.message);
+    notify('فشل التصدير', 'error');
   }
 }
 
-// دوال التقارير
 function generateComprehensiveReport() {
-  try {
-    showInfo('جاري إنشاء التقرير الشامل...');
-    
-    const fromDate = document.getElementById('reportFromDate').value;
-    const toDate = document.getElementById('reportToDate').value;
-    
-    if (!fromDate || !toDate) {
-      showError('يرجى تحديد فترة التقرير');
-      return;
-    }
-    
-    // تصفية البيانات حسب الفترة
-    const filteredData = transportSystem.transportData.filter(transport => 
-      transport.date >= fromDate && transport.date <= toDate
-    );
-    
-    // إنشاء التقرير
-    const report = {
-      period: `من ${fromDate} إلى ${toDate}`,
-      summary: transportSystem.calculateDailySummary(filteredData),
-      data: filteredData,
-      receipts: transportSystem.receiptsData.filter(receipt => 
-        receipt.date >= fromDate && receipt.date <= toDate
-      ),
-      generatedAt: new Date().toISOString()
-    };
-    
-    // عرض التقرير
-    const reportDiv = document.getElementById('comprehensiveReport');
-    reportDiv.innerHTML = `
-      <div class="card">
-        <h4>ملخص التقرير</h4>
-        <p><strong>الفترة:</strong> ${report.period}</p>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <div class="summary-value">${report.summary.totalTransports}</div>
-            <div class="summary-label">إجمالي النقلات</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-value">${report.summary.totalFreight.toFixed(2)}</div>
-            <div class="summary-label">إجمالي النولون</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-value">${report.summary.totalExpenses.toFixed(2)}</div>
-            <div class="summary-label">إجمالي المصروفات</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-value">${report.summary.totalProfit.toFixed(2)}</div>
-            <div class="summary-label">إجمالي الأرباح</div>
-          </div>
-        </div>
+  const from = document.getElementById('reportFromDate').value;
+  const to = document.getElementById('reportToDate').value;
+  if (!from || !to) return notify('حدد الفترة', 'error');
+  const data = transportSystem.transportData.filter(t => t.date >= from && t.date <= to);
+  const summary = transportSystem.calculateDailySummary(data);
+  document.getElementById('comprehensiveReport').innerHTML = `
+    <div class="card">
+      <h4>تقرير من ${from} إلى ${to}</h4>
+      <div class="summary-grid">
+        <div class="summary-item"><div class="summary-value">${summary.totalTransports}</div><div class="summary-label">نقلات</div></div>
+        <div class="summary-item"><div class="summary-value">${summary.totalFreight.toFixed(2)}</div><div class="summary-label">نولون</div></div>
+        <div class="summary-item"><div class="summary-value">${summary.totalExpenses.toFixed(2)}</div><div class="summary-label">مصروفات</div></div>
+        <div class="summary-item"><div class="summary-value">${summary.totalProfit.toFixed(2)}</div><div class="summary-label">أرباح</div></div>
       </div>
-    `;
-    
-    showSuccess('تم إنشاء التقرير بنجاح');
-  } catch (error) {
-    console.error('Error generating report:', error);
-    showError('فشل في إنشاء التقرير: ' + error.message);
-  }
+    </div>`;
 }
 
 function printReport() {
-  try {
-    showInfo('جاري تجهيز الطباعة...');
-    
-    // إنشاء محتوى للطباعة
-    const printContent = document.getElementById('comprehensiveReport').innerHTML;
-    const printWindow = window.open('', '_blank');
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <title>تقرير بيانات النقلات</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; direction: rtl; }
-          .card { border: 1px solid #ddd; padding: 20px; margin: 10px 0; }
-          .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-          .summary-item { text-align: center; padding: 10px; border: 1px solid #eee; }
-          .summary-value { font-size: 1.2rem; font-weight: bold; }
-          .summary-label { font-size: 0.9rem; color: #666; }
-          @media print { body { margin: 10px; } }
-        </style>
-      </head>
-      <body>
-        <h1>تقرير بيانات النقلات</h1>
-        ${printContent}
-        <p style="margin-top: 30px; text-align: center;">
-          تم الطباعة في: ${new Date().toLocaleString('ar-EG')}
-        </p>
-      </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.print();
-    
-    showSuccess('تم إرسال التقرير للطباعة');
-  } catch (error) {
-    console.error('Error printing report:', error);
-    showError('فشل في طباعة التقرير: ' + error.message);
-  }
+  const content = document.getElementById('comprehensiveReport').innerHTML;
+  if (!content) return notify('ولد التقرير أولاً', 'error');
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><title>طباعة</title><style>body{font-family:Tahoma;direction:rtl;padding:20px;}.card{border:1px solid #ccc;padding:15px;}.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}</style></head><body>${content}</body></html>`);
+  win.document.close();
+  win.print();
 }
 
 function generateSettlementReport() {
-  try {
-    showInfo('جاري إنشاء تقرير التسويات...');
-    
-    const customerName = document.getElementById('settlementCustomer').value;
-    const year = document.getElementById('settlementYear').value;
-    
-    if (!customerName) {
-      showError('يرجى إدخال اسم العميل');
-      return;
-    }
-    
-    // الحصول على ملخص التسويات
-    const settlements = transportSystem.getCustomerSettlementSummary(customerName, parseInt(year));
-    
-    // عرض التقرير
-    const reportDiv = document.getElementById('settlementsReport');
-    reportDiv.innerHTML = `
-      <div class="card">
-        <h4>تقرير تسويات العميل: ${customerName} - ${year}</h4>
-        ${settlements.length === 0 ? 
-          '<p>لا توجد تسويات لهذا العميل في هذه السنة</p>' :
-          settlements.map(settlement => `
-            <div class="card" style="margin: 10px 0; padding: 15px;">
-              <h5>تسوية رقم: ${settlement.settlementNumber}</h5>
-              <div class="summary-grid">
-                <div class="summary-item">
-                  <div class="summary-value">${settlement.totalTransports}</div>
-                  <div class="summary-label">عدد النقلات</div>
-                </div>
-                <div class="summary-item">
-                  <div class="summary-value">${settlement.totalAmount.toFixed(2)}</div>
-                  <div class="summary-label">إجمالي المبلغ</div>
-                </div>
-                <div class="summary-item">
-                  <div class="summary-value">${settlement.totalExpenses.toFixed(2)}</div>
-                  <div class="summary-label">إجمالي المصروفات</div>
-                </div>
-                <div class="summary-item">
-                  <div class="summary-value">${settlement.totalProfit.toFixed(2)}</div>
-                  <div class="summary-label">إجمالي الأرباح</div>
-                </div>
-              </div>
-            </div>
-          `).join('')
-        }
-      </div>
-    `;
-    
-    showSuccess('تم إنشاء تقرير التسويات بنجاح');
-  } catch (error) {
-    console.error('Error generating settlement report:', error);
-    showError('فشل في إنشاء تقرير التسويات: ' + error.message);
-  }
+  const cust = document.getElementById('settlementCustomer').value;
+  const year = document.getElementById('settlementYear').value;
+  if (!cust) return notify('أدخل العميل', 'error');
+  const sets = transportSystem.getCustomerSettlementSummary(cust, parseInt(year));
+  document.getElementById('settlementsReport').innerHTML = sets.length ? sets.map(s => `
+    <div class="card" style="margin-top:10px">
+      <h5>تسوية ${s.settlementNumber}</h5>
+      <p>النقلات: ${s.totalTransports} | المبلغ: ${s.totalAmount.toFixed(2)}</p>
+    </div>`).join('') : '<p>لا توجد بيانات</p>';
 }
 
 function exportSettlementReport() {
-  try {
-    showInfo('جاري تصدير تقرير التسويات...');
-    
-    const customerName = document.getElementById('settlementCustomer').value;
-    const year = document.getElementById('settlementYear').value;
-    
-    if (!customerName) {
-      showError('يرجى إدخال اسم العميل أولاً');
-      return;
-    }
-    
-    const settlements = transportSystem.getCustomerSettlementSummary(customerName, parseInt(year));
-    
-    // تحضير البيانات للتصدير
-    const exportData = settlements.map(settlement => ({
-      'رقم التسوية': settlement.settlementNumber,
-      'العميل': settlement.customerName,
-      'السنة': settlement.year,
-      'عدد النقلات': settlement.totalTransports,
-      'إجمالي المبلغ': settlement.totalAmount.toFixed(2),
-      'إجمالي النولون': settlement.totalFreight.toFixed(2),
-      'إجمالي المصروفات': settlement.totalExpenses.toFixed(2),
-      'إجمالي الأرباح': settlement.totalProfit.toFixed(2)
-    }));
-    
-    // تحويل إلى CSV
-    const headers = Object.keys(exportData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...exportData.map(row => 
-        headers.map(header => `"${row[header] || ''}"`).join(',')
-      )
-    ].join('\n');
-    
-    // إنشاء ملف وتحميله
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `تقرير_التسويات_${customerName}_${year}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showSuccess('تم تصدير تقرير التسويات بنجاح');
-  } catch (error) {
-    console.error('Error exporting settlement report:', error);
-    showError('فشل في تصدير تقرير التسويات: ' + error.message);
-  }
+  notify('ميزة قيد التطوير', 'info');
 }
 
-// Global access for onclick handlers - بعد تعريف كل الدوال
+// --- Utilities ---
+function notify(message, type = 'info') {
+  const info = document.getElementById('transportInfo');
+  if (info) {
+    info.textContent = message;
+    info.style.color = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : 'var(--muted)');
+  }
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 24px;border-radius:12px;background:${type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : '#333')};color:#fff;font-weight:700;z-index:10000;direction:rtl;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.3s ease;transform:translateY(-20px);opacity:0;`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.transform = 'translateY(0)'; toast.style.opacity = '1'; }, 10);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+function updateSummary() {
+  if (!transportSystem) return;
+  const s = transportSystem.calculateDailySummary(currentTransportData);
+  const up = (id, v) => { if(document.getElementById(id)) document.getElementById(id).textContent = v.toLocaleString('ar-EG', {minimumFractionDigits:2}); };
+  up('totalTransports', s.totalTransports); up('totalFreight', s.totalFreight); up('totalExpenses', s.totalExpenses);
+  up('totalProfit', s.totalProfit); up('totalDeposits', s.totalDeposits); up('totalRemaining', s.totalRemaining);
+}
+
+// دوال المساعدة للواجهة القديمة
+window.showSuccess = (m) => notify(m, 'success');
+window.showError = (m) => notify(m, 'error');
+window.showInfo = (m) => notify(m, 'info');
+
+// Export to window
 window.addNewTransportRow = addNewTransportRow;
 window.saveAllTransportData = saveAllTransportData;
 window.exportToExcel = exportToExcel;
@@ -1672,8 +1038,6 @@ window.generateComprehensiveReport = generateComprehensiveReport;
 window.printReport = printReport;
 window.generateSettlementReport = generateSettlementReport;
 window.exportSettlementReport = exportSettlementReport;
-
 </script>
-
 </body>
 </html>

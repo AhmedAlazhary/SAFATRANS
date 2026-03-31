@@ -356,9 +356,28 @@ async function loadInitialData() {
 function refreshLocalData() {
   currentTransportData = transportSystem.getTransportDataByDate(selectedDate);
   currentReceiptsData = transportSystem.receiptsData.filter(r => r.date === selectedDate);
+  
+  // ترتيب تلقائي حسب العميل ثم رقم التسوية
+  sortCurrentData();
+  
   renderTransportTable();
   renderReceiptsTable();
   updateSummary();
+}
+
+function sortCurrentData() {
+  currentTransportData.sort((a, b) => {
+    // الترتيب حسب اسم العميل أولاً
+    const nameA = (a.customerName || "").toLowerCase();
+    const nameB = (b.customerName || "").toLowerCase();
+    if (nameA < nameB) return -1;
+    if (nameA > nameB) return 1;
+    
+    // الترتيب حسب رقم التسوية ثانياً
+    const setA = parseInt(a.settlementNumber) || 0;
+    const setB = parseInt(b.settlementNumber) || 0;
+    return setA - setB;
+  });
 }
 
 function setupEventListeners() {
@@ -392,6 +411,7 @@ window.addNewTransportRow = () => {
   const newRow = transportSystem.createNewTransportRow({ date: selectedDate });
   currentTransportData.push(newRow);
   transportSystem.transportData.push(newRow);
+  sortCurrentData();
   renderTransportTable();
 };
 
@@ -521,12 +541,22 @@ window.updateField = async (id, field, value) => {
     } else if (!row.settlementNumber) {
       row.settlementNumber = 1;
     }
+    
+    // إعادة الترتيب إذا تغير العميل أو رقم التسوية (عبر الإذن)
+    sortCurrentData();
+    renderTransportTable();
   }
 
   if (field === 'permitNumber' || field === 'billNumber') transportSystem.updateLinkedReceipts(row);
   else transportSystem.calculateFinancialValues(row);
   
-  syncRowUI(id); 
+  if (field === 'settlementNumber') {
+    sortCurrentData();
+    renderTransportTable();
+  } else {
+    syncRowUI(id); 
+  }
+  
   updateSummary();
   
   // Auto-save

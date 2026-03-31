@@ -251,6 +251,7 @@ class TransportDataSystem {
         
       if (settlementNumbers.length === 0) return 1;
       
+      // نأخذ أكبر رقم موجود ونضيف 1
       return Math.max(...settlementNumbers) + 1;
       
     } catch (error) {

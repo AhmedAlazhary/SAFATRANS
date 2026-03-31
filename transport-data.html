@@ -526,19 +526,32 @@ window.updateField = async (id, field, value) => {
   checkAndAddToSharedList(field, value);
   
   if (field === 'customerName' || field === 'permitType' || field === 'billNumber') {
+    // نمنع الحساب التلقائي إذا كان الحقل المغير هو اسم العميل وكان الحقل بالفعل يحتوي على قيمة (إلا لو كانت خالية)
+    // هذا يمنع القفز إلى رقم 2 عند تعديل بيانات عميل موجود بالفعل أو عند حذف وإعادة إدخال
+    
     const customerTransports = transportSystem.transportData
       .filter(t => t.customerName === row.customerName && t.id !== id && t.settlementNumber)
       .sort((a, b) => new Date(b.updatedAt || b.date) - new Date(a.createdAt || a.date));
       
+    // نحدد رقم التسوية الأقصى الحالي لهذا العميل
+    const settlementNumbers = customerTransports
+      .map(t => parseInt(t.settlementNumber))
+      .filter(n => !isNaN(n));
+    const maxSettlement = settlementNumbers.length > 0 ? Math.max(...settlementNumbers) : 0;
+    
     const lastRecord = customerTransports[0];
+    
     if (lastRecord) {
       const isSamePermit = (lastRecord.permitType === row.permitType) && (lastRecord.billNumber === row.billNumber);
       if (isSamePermit && row.billNumber) {
         row.settlementNumber = lastRecord.settlementNumber;
-      } else {
-        row.settlementNumber = parseInt(lastRecord.settlementNumber) + 1;
+      } else if (!row.settlementNumber) {
+        // إذا كان عميل له سوابق ولم يتم تحديد رقم تسوية بعد
+        // نبدأ دائماً برقم 1 إذا لم يكن هناك أي تسويات سابقة لهذا العميل في البيانات الحالية
+        row.settlementNumber = maxSettlement + 1;
       }
     } else if (!row.settlementNumber) {
+      // عميل جديد تماماً وليس له أي سجلات
       row.settlementNumber = 1;
     }
     

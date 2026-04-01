@@ -1,6 +1,6 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, indexedDBLocalPersistence, initializeAuth, browserLocalPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { mountAppNav, APP_PAGES } from "./app-nav.js";
@@ -12,7 +12,10 @@ const firestore = getFirestore(app);
 
 // Initialize a secondary Firebase app for creating users without logging out the admin
 const secondaryApp = initializeApp(firebaseConfig, "Secondary");
-const secondaryAuth = getAuth(secondaryApp);
+// Force in-memory persistence for the secondary auth to prevent it from touching the main session
+const secondaryAuth = initializeAuth(secondaryApp, {
+    persistence: inMemoryPersistence
+});
 
 let currentUser = null;
 
@@ -50,12 +53,16 @@ window.editUser = async (id) => {
 window.deleteUser = async (id) => {
     if (confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
         try {
+            // حذف من Firestore أولاً
             await deleteDoc(doc(firestore, 'users', id));
+            
+            // تحديث الجدول
             await loadUsers();
-            window.notify('تم حذف المستخدم بنجاح', 'success');
+            
+            window.notify('تم حذف بيانات المستخدم من قاعدة البيانات بنجاح. ملاحظة: لحذف حساب الدخول نهائياً، يجب حذفه من لوحة تحكم Firebase Authentication يدوياً لدواعي أمنية.', 'success');
         } catch (e) {
             console.error("Delete error:", e);
-            window.notify("خطأ في حذف المستخدم", "error");
+            window.notify("خطأ في حذف بيانات المستخدم", "error");
         }
     }
 };
@@ -216,20 +223,27 @@ function setupEventListeners() {
                 window.notify('تم تحديث بيانات المستخدم والصلاحيات', 'success');
             } else {
                 // Use secondaryAuth to create user without logging out the current admin
+                // Note: We use the email for actual login. Password must be 6+ characters.
+                if (!userData.password || userData.password.length < 6) {
+                    throw new Error("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+                }
+
                 const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password);
                 const newUser = userCredential.user;
                 
+                // Create user profile in Firestore using the NEW UID from Authentication
                 await setDoc(doc(firestore, 'users', newUser.uid), {
                     name: userData.name,
                     email: userData.email,
                     role: userData.role,
-                    allowedPages: userData.allowedPages
+                    allowedPages: userData.allowedPages,
+                    createdAt: new Date().toISOString()
                 });
 
-                // Immediately sign out from the secondary instance to prevent session conflicts
+                // Immediately sign out from the secondary instance
                 await signOut(secondaryAuth);
                 
-                window.notify('تم إضافة المستخدم بنجاح وتفعيله للدخول', 'success');
+                window.notify(`تم إنشاء حساب ${userData.name} بنجاح. يمكنه الآن تسجيل الدخول باستخدام البريد الإلكتروني.`, 'success');
             }
             userModal.style.display = 'none';
             await loadUsers();

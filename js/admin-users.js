@@ -204,9 +204,13 @@ function setupEventListeners() {
         const selectedPermissions = Array.from(document.querySelectorAll('input[name="pagePermission"]:checked'))
             .map(cb => cb.value);
 
+        const rawEmail = document.getElementById('userEmail').value.trim();
+        // التأكد من أن البريد الإلكتروني بتنسيق صحيح، وإذا لم يكن، نضيف نطاقاً افتراضياً
+        const userEmail = rawEmail.includes('@') ? rawEmail : `${rawEmail}@safatrans.com`;
+
         const userData = {
-            name: document.getElementById('userName').value,
-            email: document.getElementById('userEmail').value,
+            name: document.getElementById('userName').value.trim().toLowerCase(),
+            email: userEmail,
             password: document.getElementById('userPassword').value,
             role: document.getElementById('userRole').value,
             allowedPages: selectedPermissions
@@ -243,7 +247,7 @@ function setupEventListeners() {
                 // Immediately sign out from the secondary instance
                 await signOut(secondaryAuth);
                 
-                window.notify(`تم إنشاء حساب ${userData.name} بنجاح. يمكنه الآن تسجيل الدخول باستخدام البريد الإلكتروني.`, 'success');
+                window.notify(`تم إنشاء حساب ${userData.name} بنجاح. يمكنه الآن تسجيل الدخول باستخدام اسم المستخدم أو البريد الإلكتروني.`, 'success');
             }
             userModal.style.display = 'none';
             await loadUsers();

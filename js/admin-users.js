@@ -10,6 +10,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestore = getFirestore(app);
 
+// Initialize a secondary Firebase app for creating users without logging out the admin
+const secondaryApp = initializeApp(firebaseConfig, "Secondary");
+const secondaryAuth = getAuth(secondaryApp);
+
 let currentUser = null;
 
 // --- Define ALL Global Functions First ---
@@ -211,14 +215,21 @@ function setupEventListeners() {
                 }, { merge: true });
                 window.notify('تم تحديث بيانات المستخدم والصلاحيات', 'success');
             } else {
-                const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-                await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+                // Use secondaryAuth to create user without logging out the current admin
+                const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password);
+                const newUser = userCredential.user;
+                
+                await setDoc(doc(firestore, 'users', newUser.uid), {
                     name: userData.name,
                     email: userData.email,
                     role: userData.role,
                     allowedPages: userData.allowedPages
                 });
-                window.notify('تم إضافة المستخدم بنجاح', 'success');
+
+                // Immediately sign out from the secondary instance to prevent session conflicts
+                await signOut(secondaryAuth);
+                
+                window.notify('تم إضافة المستخدم بنجاح وتفعيله للدخول', 'success');
             }
             userModal.style.display = 'none';
             await loadUsers();

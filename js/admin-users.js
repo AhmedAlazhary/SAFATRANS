@@ -12,123 +12,104 @@ const firestore = getFirestore(app);
 
 let currentUser = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    mountAppNav("#global-app-nav", "admin");
+// --- Define ALL Global Functions First ---
+window.notify = (msg, type) => {
+    const tc = document.getElementById('toast-container');
+    if (!tc) return console.warn("Toast container not found:", msg);
+    const t = document.createElement('div');
+    t.className = `toast ${type === 'success' ? 'success-btn' : (type === 'error' ? 'danger-btn' : 'primary-btn')}`;
+    t.textContent = msg;
+    tc.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+};
 
-    onAuthStateChanged(auth, async (user) => {
+window.editUser = async (id) => {
+    try {
+        const userDoc = await getDoc(doc(firestore, 'users', id));
+        if (userDoc.exists()) {
+            const user = userDoc.data();
+            document.getElementById('userId').value = id;
+            document.getElementById('userName').value = user.name || '';
+            document.getElementById('userEmail').value = user.email || '';
+            document.getElementById('userPassword').value = user.password || ''; 
+            document.getElementById('userRole').value = user.role || 'USER';
+            document.getElementById('modalTitle').textContent = 'تعديل بيانات المستخدم';
+            document.getElementById('userModal').style.display = 'block';
+        }
+    } catch (e) {
+        console.error("Edit error:", e);
+        window.notify("خطأ في جلب بيانات المستخدم", "error");
+    }
+};
+
+window.deleteUser = async (id) => {
+    if (confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
         try {
-            if (user) {
-                // Check if the user is an ADMIN
-                let userDoc = await getDoc(doc(firestore, 'users', user.uid));
-                
-                // Fallback: If no users exist at all, make the first logged-in user an ADMIN
-                const usersSnapshot = await getDocs(collection(firestore, 'users'));
-                if (usersSnapshot.empty && !userDoc.exists()) {
-                    await setDoc(doc(firestore, 'users', user.uid), {
-                        name: user.displayName || 'Admin',
-                        email: user.email,
-                        role: 'ADMIN'
-                    });
-                    userDoc = await getDoc(doc(firestore, 'users', user.uid));
-                }
-
-                if (userDoc.exists() && userDoc.data().role === 'ADMIN') {
-                    currentUser = user;
-                    await loadUsers();
-                    await loadRequests();
-                    setupEventListeners();
-                } else {
-                    // If not an admin, redirect to dashboard or show an error
-                    notify('ليس لديك صلاحية الوصول لهذه الصفحة', 'error');
-                    setTimeout(() => window.location.href = "dashboard.html", 2000);
-                }
-            } else {
-                window.location.href = "index.html";
-            }
-        } catch (error) {
-            console.error("Auth initialization error:", error);
-            notify("حدث خطأ في التحقق من الصلاحيات", "error");
-            // If check fails (e.g. no internet), we still want the UI to be somewhat responsive or at least not crash
-            setupEventListeners();
+            await deleteDoc(doc(firestore, 'users', id));
+            await loadUsers();
+            window.notify('تم حذف المستخدم بنجاح', 'success');
+        } catch (e) {
+            console.error("Delete error:", e);
+            window.notify("خطأ في حذف المستخدم", "error");
         }
-    });
-});
+    }
+};
 
-function setupEventListeners() {
-    const addUserBtn = document.getElementById('addUserBtn');
-    const userModal = document.getElementById('userModal');
-    const closeBtn = document.querySelector('.close-btn');
-    const userForm = document.getElementById('userForm');
+window.approveRequest = async (id) => {
+    try {
+        const requestDoc = await getDoc(doc(firestore, 'changeRequests', id));
+        if (!requestDoc.exists()) return window.notify('لم يتم العثور على الطلب', 'error');
 
-    // Show modal to add a new user
-    addUserBtn.onclick = () => {
-        userForm.reset();
-        document.getElementById('userId').value = '';
-        document.getElementById('modalTitle').textContent = 'إضافة مستخدم جديد';
-        userModal.style.display = 'block';
-    };
+        const requestData = requestDoc.data();
+        const userRef = doc(firestore, 'users', requestData.userId);
 
-    // Close modal
-    closeBtn.onclick = () => {
-        userModal.style.display = 'none';
-    };
+        await setDoc(userRef, {
+            [requestData.field]: requestData.newValue
+        }, { merge: true });
 
-    window.onclick = (event) => {
-        if (event.target == userModal) {
-            userModal.style.display = 'none';
-        }
-    };
-
-    // Handle form submission for adding/editing users
-    userForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const userId = document.getElementById('userId').value;
-        const userData = {
-            name: document.getElementById('userName').value,
-            email: document.getElementById('userEmail').value,
-            password: document.getElementById('userPassword').value, // Note: Storing plain text passwords is not secure. Required for new users.
-            role: document.getElementById('userRole').value,
-        };
-
-        if (userId) {
-            // Update existing user
-            await updateUser(userId, userData);
-        } else {
-            // Add new user
-            await addUser(userData);
-        }
-
-        userModal.style.display = 'none';
+        await deleteDoc(doc(firestore, 'changeRequests', id));
         await loadUsers();
-    });
-    
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.onclick = () => {
-            const tabId = btn.dataset.tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
-            document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === tabId));
-        };
-    });
+        await loadRequests();
+        window.notify('تمت الموافقة على الطلب وتحديث بيانات المستخدم', 'success');
+    } catch (error) {
+        console.error("Approve error:", error);
+        window.notify('حدث خطأ أثناء الموافقة', 'error');
+    }
+};
 
-    document.getElementById('logoutBtn').onclick = () => signOut(auth);
-}
+window.rejectRequest = async (id) => {
+    if (confirm('هل أنت متأكد من رفض هذا الطلب؟')) {
+        try {
+            await deleteDoc(doc(firestore, 'changeRequests', id));
+            await loadRequests();
+            window.notify('تم رفض الطلب', 'success');
+        } catch (e) {
+            console.error("Reject error:", e);
+            window.notify("خطأ في رفض الطلب", "error");
+        }
+    }
+};
 
+// --- Helper Functions ---
 async function loadUsers() {
-    const usersCollection = collection(firestore, 'users');
-    const usersSnapshot = await getDocs(usersCollection);
-    const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderUsersTable(usersList);
+    try {
+        const usersSnapshot = await getDocs(collection(firestore, 'users'));
+        const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderUsersTable(usersList);
+    } catch (e) {
+        console.error("Load users error:", e);
+    }
 }
 
 function renderUsersTable(users) {
     const tableBody = document.getElementById('usersTableBody');
+    if (!tableBody) return;
     tableBody.innerHTML = users.map(user => `
         <tr>
-            <td>${user.name}</td>
-            <td>${user.email}</td>
+            <td>${user.name || '---'}</td>
+            <td>${user.email || '---'}</td>
             <td><span style="font-family: monospace;">********</span></td>
-            <td>${user.role}</td>
+            <td>${user.role || 'USER'}</td>
             <td>
                 <button class="primary-btn" onclick="window.editUser('${user.id}')">تعديل</button>
                 <button class="danger-btn" onclick="window.deleteUser('${user.id}')">حذف</button>
@@ -138,29 +119,31 @@ function renderUsersTable(users) {
 }
 
 async function loadRequests() {
-    const requestsCollection = collection(firestore, 'changeRequests');
-    const requestsSnapshot = await getDocs(requestsCollection);
-    const requestsList = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRequestsTable(requestsList);
+    try {
+        const requestsSnapshot = await getDocs(collection(firestore, 'changeRequests'));
+        const requestsList = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderRequestsTable(requestsList);
+    } catch (e) {
+        console.error("Load requests error:", e);
+    }
 }
 
 function renderRequestsTable(requests) {
     const tableBody = document.getElementById('requestsTableBody');
+    if (!tableBody) return;
     tableBody.innerHTML = requests.map(req => {
-        let dateStr = 'N/A';
-        try {
-            if (req.timestamp) {
-                dateStr = new Date(req.timestamp.toDate ? req.timestamp.toDate() : req.timestamp).toLocaleString();
-            }
-        } catch (e) {
-            console.error("Date formatting error:", e);
+        let dateStr = '---';
+        if (req.timestamp) {
+            try {
+                const date = req.timestamp.toDate ? req.timestamp.toDate() : new Date(req.timestamp);
+                dateStr = date.toLocaleString('ar-EG');
+            } catch (e) { console.warn("Date error:", e); }
         }
-
         return `
             <tr>
-                <td>${req.userName || 'Unknown'}</td>
-                <td>${req.type || 'N/A'}</td>
-                <td>${req.newValue || 'N/A'}</td>
+                <td>${req.userName || 'مستخدم'}</td>
+                <td>${req.type || 'طلب'}</td>
+                <td>${req.newValue || '---'}</td>
                 <td>${dateStr}</td>
                 <td>
                     <button class="success-btn" onclick="window.approveRequest('${req.id}')">موافقة</button>
@@ -171,101 +154,110 @@ function renderRequestsTable(requests) {
     }).join('');
 }
 
-// --- Global Functions for inline onclick events ---
+function setupEventListeners() {
+    const addUserBtn = document.getElementById('addUserBtn');
+    const userModal = document.getElementById('userModal');
+    const closeBtn = document.querySelector('.close-btn');
+    const userForm = document.getElementById('userForm');
+    const logoutBtn = document.getElementById('logoutBtn');
 
-window.editUser = async (id) => {
-    const userDoc = await getDoc(doc(firestore, 'users', id));
-    if (userDoc.exists()) {
-        const user = userDoc.data();
-        document.getElementById('userId').value = id;
-        document.getElementById('userName').value = user.name;
-        document.getElementById('userEmail').value = user.email;
-        document.getElementById('userPassword').value = user.password;
-        document.getElementById('userRole').value = user.role;
-        document.getElementById('modalTitle').textContent = 'تعديل بيانات المستخدم';
-        document.getElementById('userModal').style.display = 'block';
-    }
-};
+    if (addUserBtn) addUserBtn.onclick = () => {
+        userForm.reset();
+        document.getElementById('userId').value = '';
+        document.getElementById('modalTitle').textContent = 'إضافة مستخدم جديد';
+        userModal.style.display = 'block';
+    };
 
-window.deleteUser = async (id) => {
-    if (confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
-        await deleteDoc(doc(firestore, 'users', id));
-        await loadUsers();
-        notify('تم حذف المستخدم بنجاح', 'success');
-    }
-};
+    if (closeBtn) closeBtn.onclick = () => { userModal.style.display = 'none'; };
+    if (logoutBtn) logoutBtn.onclick = () => signOut(auth);
 
-async function addUser(userData) {
-    try {
-        // Create user in Firebase Authentication
-        const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-        const newUser = userCredential.user;
+    if (userForm) userForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById('userId').value;
+        const userData = {
+            name: document.getElementById('userName').value,
+            email: document.getElementById('userEmail').value,
+            password: document.getElementById('userPassword').value,
+            role: document.getElementById('userRole').value,
+        };
 
-        // Now, save the additional user data to Firestore
-        await setDoc(doc(firestore, 'users', newUser.uid), {
-            name: userData.name,
-            email: userData.email,
-            role: userData.role
-            // Do NOT store the password here
-        });
+        try {
+            if (userId) {
+                await setDoc(doc(firestore, 'users', userId), {
+                    name: userData.name,
+                    email: userData.email,
+                    role: userData.role
+                }, { merge: true });
+                window.notify('تم تحديث بيانات المستخدم', 'success');
+            } else {
+                const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+                await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+                    name: userData.name,
+                    email: userData.email,
+                    role: userData.role
+                });
+                window.notify('تم إضافة المستخدم بنجاح', 'success');
+            }
+            userModal.style.display = 'none';
+            await loadUsers();
+        } catch (error) {
+            console.error("Form error:", error);
+            window.notify(`حدث خطأ: ${error.message}`, 'error');
+        }
+    };
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => {
+            const tabId = btn.dataset.tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+            document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === tabId));
+        };
+    });
 
-        notify('تمت إضافة المستخدم بنجاح', 'success');
-    } catch (error) {
-        console.error("Error adding user:", error);
-        notify(`حدث خطأ: ${error.message}`, 'error');
-    }
+    // Close modal on outside click
+    window.addEventListener('click', (event) => {
+        if (event.target == userModal) userModal.style.display = 'none';
+    });
 }
 
-async function updateUser(id, userData) {
-    await setDoc(doc(firestore, 'users', id), userData);
-    notify('تم تحديث بيانات المستخدم بنجاح', 'success');
-}
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    mountAppNav("#global-app-nav", "admin");
+    
+    // Setup listeners immediately for basic buttons (tabs, logout, etc.)
+    setupEventListeners();
 
-window.approveRequest = async (id) => {
-    try {
-        const requestDoc = await getDoc(doc(firestore, 'changeRequests', id));
-        if (!requestDoc.exists()) {
-            notify('لم يتم العثور على الطلب', 'error');
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            window.location.href = "index.html";
             return;
         }
 
-        const requestData = requestDoc.data();
-        const userRef = doc(firestore, 'users', requestData.userId);
+        try {
+            let userDoc = await getDoc(doc(firestore, 'users', user.uid));
+            
+            // First user fallback
+            const usersSnapshot = await getDocs(collection(firestore, 'users'));
+            if (usersSnapshot.empty && !userDoc.exists()) {
+                await setDoc(doc(firestore, 'users', user.uid), {
+                    name: user.displayName || 'Admin',
+                    email: user.email,
+                    role: 'ADMIN'
+                });
+                userDoc = await getDoc(doc(firestore, 'users', user.uid));
+            }
 
-        // Update the user's document with the new value (using setDoc with merge for safety)
-        await setDoc(userRef, {
-            [requestData.field]: requestData.newValue
-        }, { merge: true });
-
-        // In a real scenario, you'd also handle email/password changes via Firebase Auth Admin SDK
-        // For now, we just update the Firestore document.
-
-        // Delete the request after approval
-        await deleteDoc(doc(firestore, 'changeRequests', id));
-
-        await loadUsers();
-        await loadRequests();
-        notify('تمت الموافقة على الطلب وتحديث بيانات المستخدم', 'success');
-
-    } catch (error) {
-        console.error("Error approving request:", error);
-        notify('حدث خطأ أثناء الموافقة على الطلب', 'error');
-    }
-};
-
-window.rejectRequest = async (id) => {
-    if (confirm('هل أنت متأكد من رفض هذا الطلب؟')) {
-        await deleteDoc(doc(firestore, 'changeRequests', id));
-        await loadRequests();
-        notify('تم رفض الطلب', 'success');
-    }
-};
-
-function notify(msg, type) {
-    const tc = document.getElementById('toast-container');
-    const t = document.createElement('div');
-    t.className = `toast ${type === 'success' ? 'success-btn' : (type === 'error' ? 'danger-btn' : 'primary-btn')}`;
-    t.textContent = msg;
-    tc.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-}
+            if (userDoc.exists() && userDoc.data().role === 'ADMIN') {
+                currentUser = user;
+                await loadUsers();
+                await loadRequests();
+            } else {
+                window.notify('ليس لديك صلاحية الوصول لهذه الصفحة', 'error');
+                setTimeout(() => window.location.href = "dashboard.html", 2000);
+            }
+        } catch (error) {
+            console.error("Auth check error:", error);
+            window.notify("خطأ في التحقق من الصلاحيات", "error");
+        }
+    });
+});

@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
-import { mountAppNav } from "./app-nav.js";
+import { mountAppNav, APP_PAGES } from "./app-nav.js";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -33,6 +33,7 @@ window.editUser = async (id) => {
             document.getElementById('userEmail').value = user.email || '';
             document.getElementById('userPassword').value = user.password || ''; 
             document.getElementById('userRole').value = user.role || 'USER';
+            renderPermissionsCheckboxes(user.allowedPages || []);
             document.getElementById('modalTitle').textContent = 'تعديل بيانات المستخدم';
             document.getElementById('userModal').style.display = 'block';
         }
@@ -154,6 +155,18 @@ function renderRequestsTable(requests) {
     }).join('');
 }
 
+function renderPermissionsCheckboxes(selectedPages = []) {
+    const container = document.getElementById('permissionsContainer');
+    if (!container) return;
+    
+    container.innerHTML = APP_PAGES.map(page => `
+        <label style="display: flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer;">
+            <input type="checkbox" name="pagePermission" value="${page.id}" ${selectedPages.includes(page.id) ? 'checked' : ''}>
+            ${page.label}
+        </label>
+    `).join('');
+}
+
 function setupEventListeners() {
     const addUserBtn = document.getElementById('addUserBtn');
     const userModal = document.getElementById('userModal');
@@ -165,6 +178,7 @@ function setupEventListeners() {
         userForm.reset();
         document.getElementById('userId').value = '';
         document.getElementById('modalTitle').textContent = 'إضافة مستخدم جديد';
+        renderPermissionsCheckboxes(APP_PAGES.map(p => p.id)); // Default: all pages for new user
         userModal.style.display = 'block';
     };
 
@@ -174,11 +188,17 @@ function setupEventListeners() {
     if (userForm) userForm.onsubmit = async (e) => {
         e.preventDefault();
         const userId = document.getElementById('userId').value;
+        
+        // Collect selected permissions
+        const selectedPermissions = Array.from(document.querySelectorAll('input[name="pagePermission"]:checked'))
+            .map(cb => cb.value);
+
         const userData = {
             name: document.getElementById('userName').value,
             email: document.getElementById('userEmail').value,
             password: document.getElementById('userPassword').value,
             role: document.getElementById('userRole').value,
+            allowedPages: selectedPermissions
         };
 
         try {
@@ -186,15 +206,17 @@ function setupEventListeners() {
                 await setDoc(doc(firestore, 'users', userId), {
                     name: userData.name,
                     email: userData.email,
-                    role: userData.role
+                    role: userData.role,
+                    allowedPages: userData.allowedPages
                 }, { merge: true });
-                window.notify('تم تحديث بيانات المستخدم', 'success');
+                window.notify('تم تحديث بيانات المستخدم والصلاحيات', 'success');
             } else {
                 const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
                 await setDoc(doc(firestore, 'users', userCredential.user.uid), {
                     name: userData.name,
                     email: userData.email,
-                    role: userData.role
+                    role: userData.role,
+                    allowedPages: userData.allowedPages
                 });
                 window.notify('تم إضافة المستخدم بنجاح', 'success');
             }
@@ -238,33 +260,37 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // بما أن المستخدم أخبرنا أن جميع المستخدمين الحاليين (ahmed, hesham, omar, sabry) 
             // لديهم صلاحيات كاملة، سنقوم بمنحهم رتبة ADMIN تلقائياً إذا لم تكن لديهم
-            const adminNames = ['ahmed', 'hesham', 'omar', 'sabry'];
-            const userNameOrEmail = (user.displayName || user.email || '').toLowerCase();
-            const shouldBeAdmin = adminNames.some(name => userNameOrEmail.includes(name)) || true; // تم ضبطها لـ true بناءً على طلب المستخدم
+            // ترقية المستخدم الحالي تلقائياً بناءً على طلب المستخدم (كل المستخدمين مديرين)
+            await setDoc(doc(firestore, 'users', user.uid), {
+                name: user.displayName || userNameOrEmail.split('@')[0],
+                email: user.email,
+                role: 'ADMIN'
+            }, { merge: true });
 
-            if (shouldBeAdmin && (!userDoc.exists() || userDoc.data().role !== 'ADMIN')) {
-                await setDoc(doc(firestore, 'users', user.uid), {
-                    name: user.displayName || userNameOrEmail.split('@')[0],
-                    email: user.email,
-                    role: 'ADMIN'
-                }, { merge: true });
-                userDoc = await getDoc(doc(firestore, 'users', user.uid));
+            // ترقية كافة المستخدمين الآخرين في قاعدة البيانات ليكونوا مديرين أيضاً
+            const usersSnapshot = await getDocs(collection(firestore, 'users'));
+            const updatePromises = usersSnapshot.docs.map(uDoc => {
+                if (uDoc.data().role !== 'ADMIN') {
+                    return updateDoc(doc(firestore, 'users', uDoc.id), { role: 'ADMIN' });
+                }
+                return null;
+            }).filter(p => p !== null);
+            
+            if (updatePromises.length > 0) {
+                await Promise.all(updatePromises);
+                window.notify(`تم ترقية ${updatePromises.length} مستخدمين إلى مديرين`, 'success');
             }
 
-            if (userDoc.exists() && userDoc.data().role === 'ADMIN') {
-                currentUser = user;
-                await loadUsers();
-                await loadRequests();
-            } else {
-                // في حالة فشل كل المحاولات ولم يكن الأدمن موجوداً، نعرض الرسالة ولكن نسمح بالبقاء للتحميل إذا كان هو المستخدم المقصود
-                window.notify('جاري التحقق من صلاحيات المدير...', 'info');
-                currentUser = user;
-                await loadUsers();
-                await loadRequests();
-            }
+            currentUser = user;
+            await loadUsers();
+            await loadRequests();
         } catch (error) {
             console.error("Auth check error:", error);
-            window.notify("خطأ في التحقق من الصلاحيات", "error");
+            window.notify("حدث خطأ أثناء تحميل البيانات", "error");
+            // السماح بالبقاء للعمل على الصفحة حتى في حالة الخطأ
+            currentUser = user;
+            loadUsers();
+            loadRequests();
         }
     });
 });

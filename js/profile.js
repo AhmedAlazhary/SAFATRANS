@@ -1,7 +1,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { mountAppNav } from "./app-nav.js";
 
@@ -17,12 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
     mountAppNav("#global-app-nav", "profile");
 
     onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            currentUser = user;
-            await loadUserProfile();
+        try {
+            if (user) {
+                currentUser = user;
+                await loadUserProfile();
+                setupEventListeners();
+            } else {
+                window.location.href = "index.html";
+            }
+        } catch (error) {
+            console.error("Auth initialization error:", error);
+            notify("حدث خطأ في تحميل الصفحة", "error");
+            // Still try to setup listeners if possible
             setupEventListeners();
-        } else {
-            window.location.href = "index.html";
         }
     });
 });
@@ -32,27 +39,30 @@ async function loadUserProfile() {
         const userDoc = await getDoc(doc(firestore, 'users', currentUser.uid));
         if (userDoc.exists()) {
             userData = userDoc.data();
-            
-            // Display current info
-            document.getElementById('displayName').textContent = userData.name || 'مستخدم';
-            document.getElementById('displayEmail').textContent = userData.email || currentUser.email;
-            
-            // Pre-fill form
-            document.getElementById('userName').value = userData.name || '';
-            document.getElementById('userEmail').value = userData.email || currentUser.email;
-            
-            // Set avatar if exists
-            if (userData.photoURL) {
-                document.getElementById('avatarImage').src = userData.photoURL;
-            } else {
-                // Default avatar
-                document.getElementById('avatarImage').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.name || 'User') + '&background=random';
-            }
         } else {
             console.warn("User document not found in Firestore.");
-            document.getElementById('displayName').textContent = currentUser.displayName || 'مستخدم';
-            document.getElementById('displayEmail').textContent = currentUser.email;
-            document.getElementById('avatarImage').src = 'https://ui-avatars.com/api/?name=User&background=random';
+            // Create a default doc if it doesn't exist
+            userData = {
+                name: currentUser.displayName || 'مستخدم جديد',
+                email: currentUser.email,
+                role: 'USER'
+            };
+            await setDoc(doc(firestore, 'users', currentUser.uid), userData);
+        }
+
+        // Display info
+        document.getElementById('displayName').textContent = userData.name || 'مستخدم';
+        document.getElementById('displayEmail').textContent = userData.email || currentUser.email;
+        
+        // Pre-fill form
+        document.getElementById('userName').value = userData.name || '';
+        document.getElementById('userEmail').value = userData.email || currentUser.email;
+        
+        // Set avatar
+        if (userData.photoURL) {
+            document.getElementById('avatarImage').src = userData.photoURL;
+        } else {
+            document.getElementById('avatarImage').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.name || 'User') + '&background=random';
         }
     } catch (error) {
         console.error("Error loading profile:", error);

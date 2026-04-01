@@ -1,7 +1,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { mountAppNav } from "./app-nav.js";
 
@@ -16,21 +16,40 @@ document.addEventListener('DOMContentLoaded', () => {
     mountAppNav("#global-app-nav", "admin");
 
     onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            // Check if the user is an ADMIN
-            const userDoc = await getDoc(doc(firestore, 'users', user.uid));
-            if (userDoc.exists() && userDoc.data().role === 'ADMIN') {
-                currentUser = user;
-                await loadUsers();
-                await loadRequests();
-                setupEventListeners();
+        try {
+            if (user) {
+                // Check if the user is an ADMIN
+                let userDoc = await getDoc(doc(firestore, 'users', user.uid));
+                
+                // Fallback: If no users exist at all, make the first logged-in user an ADMIN
+                const usersSnapshot = await getDocs(collection(firestore, 'users'));
+                if (usersSnapshot.empty && !userDoc.exists()) {
+                    await setDoc(doc(firestore, 'users', user.uid), {
+                        name: user.displayName || 'Admin',
+                        email: user.email,
+                        role: 'ADMIN'
+                    });
+                    userDoc = await getDoc(doc(firestore, 'users', user.uid));
+                }
+
+                if (userDoc.exists() && userDoc.data().role === 'ADMIN') {
+                    currentUser = user;
+                    await loadUsers();
+                    await loadRequests();
+                    setupEventListeners();
+                } else {
+                    // If not an admin, redirect to dashboard or show an error
+                    notify('ليس لديك صلاحية الوصول لهذه الصفحة', 'error');
+                    setTimeout(() => window.location.href = "dashboard.html", 2000);
+                }
             } else {
-                // If not an admin, redirect to dashboard or show an error
-                notify('ليس لديك صلاحية الوصول لهذه الصفحة', 'error');
-                setTimeout(() => window.location.href = "dashboard.html", 2000);
+                window.location.href = "index.html";
             }
-        } else {
-            window.location.href = "index.html";
+        } catch (error) {
+            console.error("Auth initialization error:", error);
+            notify("حدث خطأ في التحقق من الصلاحيات", "error");
+            // If check fails (e.g. no internet), we still want the UI to be somewhat responsive or at least not crash
+            setupEventListeners();
         }
     });
 });
@@ -127,18 +146,29 @@ async function loadRequests() {
 
 function renderRequestsTable(requests) {
     const tableBody = document.getElementById('requestsTableBody');
-    tableBody.innerHTML = requests.map(req => `
-        <tr>
-            <td>${req.userName}</td>
-            <td>${req.type}</td>
-            <td>${req.newValue}</td>
-            <td>${new Date(req.timestamp?.toDate()).toLocaleString()}</td>
-            <td>
-                <button class="success-btn" onclick="window.approveRequest('${req.id}')">موافقة</button>
-                <button class="danger-btn" onclick="window.rejectRequest('${req.id}')">رفض</button>
-            </td>
-        </tr>
-    `).join('');
+    tableBody.innerHTML = requests.map(req => {
+        let dateStr = 'N/A';
+        try {
+            if (req.timestamp) {
+                dateStr = new Date(req.timestamp.toDate ? req.timestamp.toDate() : req.timestamp).toLocaleString();
+            }
+        } catch (e) {
+            console.error("Date formatting error:", e);
+        }
+
+        return `
+            <tr>
+                <td>${req.userName || 'Unknown'}</td>
+                <td>${req.type || 'N/A'}</td>
+                <td>${req.newValue || 'N/A'}</td>
+                <td>${dateStr}</td>
+                <td>
+                    <button class="success-btn" onclick="window.approveRequest('${req.id}')">موافقة</button>
+                    <button class="danger-btn" onclick="window.rejectRequest('${req.id}')">رفض</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // --- Global Functions for inline onclick events ---
@@ -202,10 +232,10 @@ window.approveRequest = async (id) => {
         const requestData = requestDoc.data();
         const userRef = doc(firestore, 'users', requestData.userId);
 
-        // Update the user's document with the new value
-        await updateDoc(userRef, {
+        // Update the user's document with the new value (using setDoc with merge for safety)
+        await setDoc(userRef, {
             [requestData.field]: requestData.newValue
-        });
+        }, { merge: true });
 
         // In a real scenario, you'd also handle email/password changes via Firebase Auth Admin SDK
         // For now, we just update the Firestore document.

@@ -1617,7 +1617,7 @@ function handleCellCommit(event) {
 
 function handleCellBlur(event) {
   const input = event.target;
-  if (!input.matches('input[data-date][data-field]')) return;
+  if (!input.matches('input[data-date][data-field]') && !input.matches('select[data-date][data-field]')) return;
 
   const date = input.dataset.date;
   const rowId = input.dataset.rowId;
@@ -1653,7 +1653,7 @@ function normalizeSnapshotData(snapshotValue) {
 
 function getActiveEditingInfo() {
   const el = document.activeElement;
-  if (el && el.matches('input[data-date][data-field]')) {
+  if (el && (el.matches('input[data-date][data-field]') || el.matches('select[data-date][data-field]'))) {
     return {
       date: el.dataset.date,
       rowId: el.dataset.rowId,

@@ -76,5 +76,7 @@ export const APP_PAGES = [
   { id: "accounting", href: "accounting.html", label: "المحاسبة" },
   { id: "drivers", href: "drivers-roles-page.html", label: "أدوار السواقين" },
   { id: "shared-lists", href: "shared-lists.html", label: "القوائم المشتركة" },
-  { id: "upload", href: "upload.html", label: "رفع ملفات" }
+  { id: "upload", href: "upload.html", label: "رفع ملفات" },
+  { id: "admin", href: "admin-users.html", label: "إدارة المستخدمين" },
+  { id: "profile", href: "profile.html", label: "الملف الشخصي" }
 ];

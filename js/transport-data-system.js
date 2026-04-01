@@ -175,22 +175,17 @@ class TransportDataSystem {
   }
 
   /**
-   * حساب القيم المالية الأساسية تلقائيًا بناءً على المنطق الجديد:
-   * 1- الباقي = النولون - العهدة
-   * 2- الربح = قيمة الفاتورة + مصروف العميل + ضريبة vat - العهدة - مصروف وإيصالات - النولون - أخرى
+   * حساب القيم المالية الأساسية تلقائيًا
    */
   calculateFinancialValues(transport) {
-    // الباقي = النولون - العهدة
+    // الباقي = النولون الكامل - العهدة
     transport.remaining = (transport.totalFreight || 0) - (transport.deposit || 0);
     
-    // الربح = (قيمة الفاتورة + مصروف العميل + ضريبة VAT) - (العهدة + مصروف وإيصالات + النولون + أخرى)
-    const income = (transport.invoiceValue || 0) + (transport.customerExpenses || 0) + (transport.vat || 0);
-    const costs = (transport.deposit || 0) + (transport.expenses || 0) + (transport.totalFreight || 0) + (transport.other || 0);
-    
-    transport.transportProfit = income - costs;
-
-    // ملاحظة: نولون الصافي والقومسيون لم يعدا جزءاً من معادلة الربح الجديدة ولكن يمكن الاحتفاظ بقيمتهما للعرض
+    // النولون الصافي = النولون الكامل - المصروف (المصروف يتم تحديثه من الإيصالات)
     transport.netFreight = (transport.totalFreight || 0) - (transport.expenses || 0);
+    
+    // ربحية عملية النقل = النولون الصافي - القومسيون
+    transport.transportProfit = (transport.netFreight || 0) - (transport.commission || 0);
   }
 
   /**
@@ -256,7 +251,6 @@ class TransportDataSystem {
         
       if (settlementNumbers.length === 0) return 1;
       
-      // نأخذ أكبر رقم موجود ونضيف 1
       return Math.max(...settlementNumbers) + 1;
       
     } catch (error) {

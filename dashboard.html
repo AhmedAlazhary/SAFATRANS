@@ -431,8 +431,15 @@ async function resolveRole(user) {
   try {
     const staffDoc = await getDoc(doc(firestore, "Staff", user.uid));
     if (staffDoc.exists()) return staffDoc.data().role || "viewer";
+    
+    // Check our new users collection as well
+    const userDoc = await getDoc(doc(firestore, "users", user.uid));
+    if (userDoc.exists()) {
+      const role = userDoc.data().role;
+      return role === 'ADMIN' ? 'admin' : (role === 'USER' ? 'manager' : 'viewer');
+    }
   } catch (error) {
-    console.error("Unable to read staff role", error);
+    console.error("Unable to read staff/user role", error);
   }
   return "viewer";
 }

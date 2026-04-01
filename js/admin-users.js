@@ -56,10 +56,10 @@ window.deleteUser = async (id) => {
             // حذف من Firestore أولاً
             await deleteDoc(doc(firestore, 'users', id));
             
-            // تحديث الجدول
+            // تحديث الجدول فوراً في الواجهة
             await loadUsers();
             
-            window.notify('تم حذف بيانات المستخدم من قاعدة البيانات بنجاح. ملاحظة: لحذف حساب الدخول نهائياً، يجب حذفه من لوحة تحكم Firebase Authentication يدوياً لدواعي أمنية.', 'success');
+            window.notify('تم حذف بيانات المستخدم بنجاح. ملاحظة: حساب الدخول (Auth) يحتاج للحذف يدوياً من لوحة Firebase لضمان الأمان.', 'success');
         } catch (e) {
             console.error("Delete error:", e);
             window.notify("خطأ في حذف بيانات المستخدم", "error");

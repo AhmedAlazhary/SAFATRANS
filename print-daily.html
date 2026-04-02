@@ -188,6 +188,42 @@ function sortRows(rows) {
   return [...rows].sort((a, b) => Number(a.order) - Number(b.order));
 }
 
+// دالة حساب النقلات الفعلية (موحدة مع daily.html)
+function calculateActualTrips(inputCount, sizeType) {
+    let actualTrips = 0;
+
+    if (sizeType === "20") {
+        // إذا كان الحجم 20: نطبق معادلة الزوجي والفردي
+        // المنطق: (العدد + 1) مقسوم على 2 مع جبر الكسر
+        actualTrips = Math.ceil(inputCount / 2);
+    } 
+    else if (sizeType === "2*20") {
+        // إذا كان الحجم 2*20: العدد كما هو
+        actualTrips = inputCount;
+    }
+    else {
+        // أحجام أخرى (مثل 40): نطبق نفس معادلة 20
+        actualTrips = Math.ceil(inputCount / 2);
+    }
+
+    return actualTrips;
+}
+
+// دالة حساب إجمالي النقلات الفعلية للصفحة
+function calculatePageTotal(date, rows) {
+    let totalTrips = 0;
+    
+    rows.forEach(row => {
+        const count = Number(row.containerCount || 0);
+        const size = row.size || "";
+        if (count > 0 && size) {
+            totalTrips += calculateActualTrips(count, size);
+        }
+    });
+    
+    return totalTrips;
+}
+
 function renderRows(date, rows) {
   return sortRows(rows).map(row => `
     <tr>

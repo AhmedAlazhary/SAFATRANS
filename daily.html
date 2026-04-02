@@ -1249,11 +1249,16 @@ function calculateMonthTotals(monthKey) {
     if (!date.startsWith(monthKey)) return;
     (dailyData[date] || []).forEach(row => {
       const count = Number(row.containerCount || 0);
-      total += count;
+      const size = row.size || "";
+      
+      // استخدام الدالة الموحدة لحساب النقلات الفعلية
+      const actualTrips = calculateActualTrips(count, size);
+      
+      total += actualTrips;
       if (row.carType === "مكتب") {
-        officeTotal += count;
+        officeTotal += actualTrips;
       } else if (row.carType === "سوق") {
-        marketTotal += count;
+        marketTotal += actualTrips;
       }
     });
   });

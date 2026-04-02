@@ -39,6 +39,7 @@ window.editUser = async (id) => {
             document.getElementById('userName').value = user.name || '';
             document.getElementById('userEmail').value = user.email || '';
             document.getElementById('userPassword').value = user.password || ''; 
+            document.getElementById('jobTitle').value = user.job_title || '';
             document.getElementById('isActive').checked = user.isActive !== false;
             
             // Update permissions UI with current permissions
@@ -143,64 +144,55 @@ window.rejectRequest = async (id) => {
 // --- Helper Functions ---
 let usersUnsubscribe = null;
 
-// دالة تحديد الصلاحيات الافتراضية للمستخدمين الجدد
-function getDefaultPermissions() {
-    return {
-        'daily_report': { canView: true, canEdit: false },
-        'accounting': { canView: false, canEdit: false },
-        'trips_management': { canView: false, canEdit: false },
-        'drivers_management': { canView: false, canEdit: false },
-        'employees_management': { canView: false, canEdit: false },
-        'prices_management': { canView: false, canEdit: false },
-        'garage_management': { canView: false, canEdit: false },
-        'treasury_management': { canView: false, canEdit: false },
-        'user_management': { canView: false, canEdit: false },
-        'reports': { canView: false, canEdit: false },
-        'profile': { canView: true, canEdit: true }
-    };
-}
-
-// دالة بناء قائمة الصفحات البسيطة
-function buildPagesList() {
+// دالة بناء مصفوفة الصلاحيات للواجهة
+function buildPermissionsMatrix() {
     const pages = [
-        { id: 'daily_report', label: 'بيان الشغل اليومي' },
-        { id: 'accounting', label: 'المحاسبة' },
-        { id: 'trips_management', label: 'إدارة النقلات' },
-        { id: 'drivers_management', label: 'إدارة السواقين' },
-        { id: 'employees_management', label: 'إدارة الموظفين' },
-        { id: 'prices_management', label: 'إدارة الأسعار' },
-        { id: 'garage_management', label: 'إدارة الجراج' },
-        { id: 'treasury_management', label: 'إدارة الخزنة' },
-        { id: 'user_management', label: 'إدارة المستخدمين' },
-        { id: 'reports', label: 'التقارير' },
-        { id: 'profile', label: 'الملف الشخصي' }
+        { id: 'daily_report', label: 'بيان الشغل اليومي', icon: '📊' },
+        { id: 'accounting', label: 'المحاسبة', icon: '💰' },
+        { id: 'trips_management', label: 'إدارة النقلات', icon: '🚚' },
+        { id: 'drivers_management', label: 'إدارة السواقين', icon: '👥' },
+        { id: 'employees_management', label: 'إدارة الموظفين', icon: '👥' },
+        { id: 'prices_management', label: 'إدارة الأسعار', icon: '💵' },
+        { id: 'garage_management', label: 'إدارة الجراج', icon: '🔧' },
+        { id: 'treasury_management', label: 'إدارة الخزنة', icon: '🏦' },
+        { id: 'user_management', label: 'إدارة المستخدمين', icon: '👤' },
+        { id: 'reports', label: 'التقارير', icon: '📈' },
+        { id: 'profile', label: 'الملف الشخصي', icon: '👤' }
     ];
     
     return pages;
 }
 
-// دالة تحديث واجهة الصلاحيات البسيطة
+// دالة تحديث واجهة الصلاحيات
 function updatePermissionsUI(userPermissions = {}) {
     const container = document.getElementById('permissionsContainer');
-    const pages = buildPagesList();
+    const pages = buildPermissionsMatrix();
     
     container.innerHTML = `
-        <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px;">
-            <h4 style="margin: 0 0 15px 0; color: #495057; font-size: 1rem; text-align: center;">اختر الصلاحيات</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+        <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+            <h4 style="margin: 0 0 15px 0; color: #495057; font-size: 1rem; text-align: center;">مصفوفة الصلاحيات</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
                 ${pages.map(page => {
                     const permissions = userPermissions[page.id] || { canView: false, canEdit: false };
                     return `
-                        <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px;">
-                            <div style="font-weight: bold; color: #495057; margin-bottom: 8px;">${page.label}</div>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                    <input type="checkbox" name="perm_${page.id}_view" ${permissions.canView ? 'checked' : ''}>
-                                    <span style="font-size: 0.9rem;">مشاهدة الصفحة</span>
+                        <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                <span style="font-size: 1.2rem;">${page.icon}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #495057; margin-bottom: 2px;">${page.label}</div>
+                                    <div style="font-size: 0.8rem; color: #6c757d;">${page.id}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;">
+                                    <input type="checkbox" name="perm_${page.id}_view" ${permissions.canView ? 'checked' : ''} 
+                                           style="width: 18px; height: 18px;">
+                                    <span style="font-size: 0.9rem;">عرض الصفحة</span>
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                    <input type="checkbox" name="perm_${page.id}_edit" ${permissions.canEdit ? 'checked' : ''}>
-                                    <span style="font-size: 0.9rem;">تعديل وحذف</span>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;">
+                                    <input type="checkbox" name="perm_${page.id}_edit" ${permissions.canEdit ? 'checked' : ''} 
+                                           style="width: 18px; height: 18px;">
+                                    <span style="font-size: 0.9rem;">تعديل/حذف</span>
                                 </label>
                             </div>
                         </div>
@@ -209,6 +201,16 @@ function updatePermissionsUI(userPermissions = {}) {
             </div>
         </div>
     `;
+    
+    // Add hover effects
+    container.querySelectorAll('label').forEach(label => {
+        label.addEventListener('mouseenter', () => {
+            label.style.backgroundColor = '#e9ecef';
+        });
+        label.addEventListener('mouseleave', () => {
+            label.style.backgroundColor = 'transparent';
+        });
+    });
 }
 
 // دالة لجمع الصلاحيات من الواجهة
@@ -292,6 +294,11 @@ function renderUsersTable(users) {
                 <td>${user.name || '---'}</td>
                 <td>${user.email || '---'}</td>
                 <td><span style="font-family: monospace;">********</span></td>
+                <td>
+                    <span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
+                        ${user.job_title || '---'}
+                    </span>
+                </td>
                 <td title="${activePermissions.join(', ')}">${permissionsText || 'لا توجد صلاحيات'}</td>
                 <td>${statusBadge}</td>
                 <td>
@@ -364,7 +371,21 @@ function setupEventListeners() {
         document.getElementById('modalTitle').textContent = 'إضافة مستخدم جديد';
         
         // Initialize with default permissions
-        updatePermissionsUI(getDefaultPermissions());
+        const defaultPermissions = {
+            'daily_report': { canView: true, canEdit: false },
+            'accounting': { canView: false, canEdit: false },
+            'trips_management': { canView: false, canEdit: false },
+            'drivers_management': { canView: false, canEdit: false },
+            'employees_management': { canView: false, canEdit: false },
+            'prices_management': { canView: false, canEdit: false },
+            'garage_management': { canView: false, canEdit: false },
+            'treasury_management': { canView: false, canEdit: false },
+            'user_management': { canView: false, canEdit: false },
+            'reports': { canView: false, canEdit: false },
+            'profile': { canView: true, canEdit: true }
+        };
+        
+        updatePermissionsUI(defaultPermissions);
         
         // Set default values
         document.getElementById('isActive').checked = true;
@@ -390,6 +411,7 @@ function setupEventListeners() {
             name: document.getElementById('userName').value.trim().toLowerCase(),
             email: userEmail,
             password: document.getElementById('userPassword').value,
+            job_title: document.getElementById('jobTitle').value.trim(),
             permissions: permissions,
             isActive: document.getElementById('isActive').checked
         };
@@ -399,6 +421,7 @@ function setupEventListeners() {
                 await setDoc(doc(firestore, 'users', userId), {
                     name: userData.name,
                     email: userData.email,
+                    job_title: userData.job_title,
                     permissions: userData.permissions,
                     isActive: userData.isActive
                 }, { merge: true });
@@ -417,6 +440,7 @@ function setupEventListeners() {
                 await setDoc(doc(firestore, 'users', newUser.uid), {
                     name: userData.name,
                     email: userData.email,
+                    job_title: userData.job_title,
                     permissions: userData.permissions,
                     isActive: userData.isActive,
                     createdAt: new Date().toISOString(),

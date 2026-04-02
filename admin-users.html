@@ -201,6 +201,19 @@ th { background: var(--accent); color: #fff; white-space: nowrap; font-weight: 7
     <div class="toolbar">
       <button class="primary-btn" id="addUserBtn">إضافة مستخدم جديد</button>
     </div>
+    
+    <!-- Search Bar -->
+    <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="text" 
+               id="userSearchInput" 
+               placeholder="بحث عن مستخدم بالاسم..." 
+               style="flex: 1; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px;">
+        <button onclick="performUserSearch()" class="primary-btn">بحث</button>
+        <button onclick="clearUserSearch()" class="danger-btn">مسح</button>
+      </div>
+    </div>
+    
     <div class="card">
       <div class="table-wrap">
         <table>
@@ -218,6 +231,9 @@ th { background: var(--accent); color: #fff; white-space: nowrap; font-weight: 7
           <tbody id="usersTableBody"></tbody>
         </table>
       </div>
+      
+      <!-- Pagination Controls -->
+      <div id="paginationControls"></div>
     </div>
   </section>
 

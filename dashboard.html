@@ -415,19 +415,36 @@ onAuthStateChanged(auth, async user => {
     return;
   }
 
-  // جلب بيانات المستخدم والصلاحيات
+  // استخدام النظام الشامل للتحسينات
   try {
-    const userDoc = await getDoc(doc(firestore, "users", user.uid));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
+    // تحسين جلب بيانات المستخدم مع الكاش
+    const userData = await comprehensiveFirebaseOptimizer.optimizedQuery(
+      collection(firestore, "users"),
+      user.uid,
+      {
+        fields: ['name', 'email', 'job_title', 'permissions', 'isActive'],
+        useCache: true,
+        ttl: 5 * 60 * 1000 // 5 دقائق للكاش
+      }
+    );
+    
+    if (userData) {
       state.role = userData.role || 'USER';
       state.permissions = userData.permissions || {};
       state.userProfile = userData;
     } else {
-      // Fallback to Staff collection
-      const staffDoc = await getDoc(doc(firestore, "Staff", user.uid));
-      if (staffDoc.exists()) {
-        const staffData = staffDoc.data();
+      // Fallback to Staff collection مع تحسين
+      const staffData = await comprehensiveFirebaseOptimizer.optimizedQuery(
+        collection(firestore, "Staff"),
+        user.uid,
+        {
+          fields: ['name', 'email', 'role'],
+          useCache: true,
+          ttl: 10 * 60 * 1000 // 10 دقائق للبيانات الثابتة
+        }
+      );
+      
+      if (staffData) {
         state.role = staffData.role || 'viewer';
         state.permissions = getDefaultPermissions(staffData.role);
         state.userProfile = staffData;
@@ -570,14 +587,58 @@ function startRealtimeListeners() {
 }
 
 function renderSummary() {
-  inventoryCount.textContent = String(state.inventory.length);
-  openJobsCount.textContent = String(state.jobs.filter(job => (job.status || "open") !== "closed").length);
-  todayExpenses.textContent = String(
-    state.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
-  );
-  lowStockCount.textContent = String(
-    state.inventory.filter(item => Number(item.availableQty || 0) <= Number(item.reorderLevel || 0)).length
-  );
+  // استخدام النظام الشامل للتحسينات
+  pageOptimizers.optimizeDashboard().then(({ users, stats }) => {
+    // تحديث إحصائيات المستخدمين
+    inventoryCount.textContent = String(users?.length || 0);
+    openJobsCount.textContent = String(stats?.openJobs || 0);
+    
+    // تحميل بيانات المصروفات اليومية محسنة
+    comprehensiveFirebaseOptimizer.optimizedQuery(
+      collection(firestore, 'expenses'),
+      null,
+      {
+        where: [['date', '==', new Date().toISOString().split('T')[0]]],
+        fields: ['amount'],
+        useCache: true,
+        ttl: 2 * 60 * 1000 // دقيقتين للمصروفات اليومية
+      }
+    ).then(expenses => {
+      const totalExpenses = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+      todayExpenses.textContent = String(totalExpenses);
+    }).catch(error => {
+      console.error('Error loading expenses:', error);
+      todayExpenses.textContent = '0';
+    });
+    
+    // تحميل بيانات المخزون المنخفض محسنة
+    comprehensiveFirebaseOptimizer.optimizedQuery(
+      collection(firestore, 'inventory'),
+      null,
+      {
+        where: [['availableQty', '<=', 'reorderLevel']],
+        fields: ['availableQty', 'reorderLevel'],
+        useCache: true,
+        ttl: 5 * 60 * 1000 // 5 دقائق للمخزون
+      }
+    ).then(inventory => {
+      lowStockCount.textContent = String(inventory?.length || 0);
+    }).catch(error => {
+      console.error('Error loading inventory:', error);
+      lowStockCount.textContent = '0';
+    });
+  }).catch(error => {
+    console.error('Dashboard optimization error:', error);
+    // Fallback to old method
+    inventoryCount.textContent = String(state.inventory.length);
+    openJobsCount.textContent = String(state.jobs.filter(job => (job.status || "open") !== "closed").length);
+    todayExpenses.textContent = String(
+      state.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
+    );
+    lowStockCount.textContent = String(
+      state.inventory.filter(item => Number(item.availableQty || 0) <= Number(item.reorderLevel || 0)).length
+    );
+  });
 }
 
 function renderActivity() {

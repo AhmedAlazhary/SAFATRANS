@@ -32,9 +32,18 @@ window.notify = (msg, type) => {
 
 window.editUser = async (id) => {
     try {
-        const userDoc = await getDoc(doc(firestore, 'users', id));
-        if (userDoc.exists()) {
-            const user = userDoc.data();
+        // استخدام استعلام محسن مع الكاش لجلب بيانات مستخدم محدد
+        const user = await firebaseOptimizer.optimizedGet(
+            collection(firestore, 'users'),
+            id,
+            {
+                useCache: true,
+                ttl: 5 * 60 * 1000, // 5 دقائق للكاش
+                fields: ['name', 'email', 'password', 'job_title', 'permissions', 'isActive']
+            }
+        );
+        
+        if (user) {
             document.getElementById('userId').value = id;
             document.getElementById('userName').value = user.name || '';
             document.getElementById('userEmail').value = user.email || '';
@@ -58,6 +67,8 @@ window.editUser = async (id) => {
             
             document.getElementById('modalTitle').textContent = 'تعديل بيانات المستخدم';
             userModal.style.display = 'block';
+        } else {
+            window.notify('لم يتم العثور على المستخدم', 'error');
         }
     } catch (e) {
         console.error("Edit error:", e);
@@ -137,6 +148,36 @@ window.rejectRequest = async (id) => {
         } catch (e) {
             console.error("Reject error:", e);
             window.notify("خطأ في رفض الطلب", "error");
+        }
+    }
+};
+
+// دوال البحث والـ Pagination
+window.performUserSearch = async () => {
+    const searchTerm = document.getElementById('userSearchInput').value;
+    await searchUsers(searchTerm);
+};
+
+window.clearUserSearch = async () => {
+    document.getElementById('userSearchInput').value = '';
+    await loadUsers(1, true);
+};
+
+// تحديث دالة الحذف لإبطال الكاش
+window.deleteUser = async (id) => {
+    if (confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
+        try {
+            await deleteDoc(doc(firestore, 'users', id));
+            
+            // إبطال الكاش بعد الحذف
+            firebaseOptimizer.invalidateCache('users');
+            
+            // تحديث الجدول فوراً في الواجهة
+            await loadUsers();
+            
+        } catch (e) {
+            console.error("Delete error:", e);
+            window.notify("خطأ في حذف المستخدم", "error");
         }
     }
 };
@@ -245,27 +286,113 @@ function getJobTitleFromRole(role) {
     return jobTitles[role] || 'مستخدم';
 }
 
-async function loadUsers() {
+// Pagination variables
+let currentPage = 1;
+const pageSize = 10;
+let lastVisible = null;
+let totalUsers = 0;
+
+async function loadUsers(page = 1, reset = false) {
     try {
         // إلغاء الاشتراك القديم إذا وجد
         if (usersUnsubscribe) {
             usersUnsubscribe();
         }
         
-        // استخدام real-time listener لتحديث فوري
-        usersUnsubscribe = onSnapshot(collection(firestore, 'users'), (snapshot) => {
-            const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderUsersTable(usersList);
-        }, (error) => {
-            console.error("Real-time users listener error:", error);
-            // fallback to one-time fetch
-            getDocs(collection(firestore, 'users')).then(snapshot => {
-                const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderUsersTable(usersList);
-            });
-        });
-    } catch (e) {
-        console.error("Load users error:", e);
+        if (reset) {
+            currentPage = 1;
+            lastVisible = null;
+        }
+        
+        // استخدام استعلام محسن مع Pagination
+        const users = await firebaseOptimizer.paginatedQuery(
+            collection(firestore, 'users'),
+            {
+                pageSize: pageSize,
+                startAfter: lastVisible,
+                orderBy: ['createdAt', 'desc'],
+                fields: ['name', 'email', 'job_title', 'permissions', 'isActive', 'createdAt']
+            }
+        );
+        
+        // حفظ آخر مستخدم مرئي للصفحة التالية
+        if (users.length > 0) {
+            lastVisible = users[users.length - 1];
+        }
+        
+        renderUsersTable(users);
+        renderPaginationControls(users.length);
+    } catch (error) {
+        console.error("Error loading users:", error);
+        window.notify("خطأ في تحميل المستخدمين", "error");
+    }
+}
+
+// دالة عرض أزرار Pagination
+function renderPaginationControls(currentPageSize) {
+    const paginationContainer = document.getElementById('paginationControls');
+    if (!paginationContainer) return;
+    
+    const isFirstPage = currentPage === 1;
+    const isLastPage = currentPageSize < pageSize;
+    
+    paginationContainer.innerHTML = `
+        <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0;">
+            <button onclick="loadUsers(${currentPage - 1})" 
+                    ${isFirstPage ? 'disabled' : ''} 
+                    class="primary-btn" 
+                    style="padding: 8px 16px;">
+                السابق
+            </button>
+            <span style="font-weight: bold; color: #495057;">
+                الصفحة ${currentPage}
+            </span>
+            <button onclick="loadUsers(${currentPage + 1})" 
+                    ${isLastPage ? 'disabled' : ''} 
+                    class="primary-btn" 
+                    style="padding: 8px 16px;">
+                التالي
+            </button>
+            <span style="color: #6c757d; margin-right: 20px;">
+                (${currentPageSize} مستخدم في هذه الصفحة)
+            </span>
+        </div>
+    `;
+}
+
+// دالة البحث مع Pagination
+async function searchUsers(searchTerm) {
+    try {
+        if (!searchTerm.trim()) {
+            return loadUsers(1, true);
+        }
+        
+        // استخدام استعلام محسن مع البحث والكاش
+        const users = await firebaseOptimizer.optimizedGet(
+            collection(firestore, 'users'),
+            null,
+            {
+                useCache: true,
+                ttl: 2 * 60 * 1000, // دقيقتين للبحث
+                where: [
+                    ['name', '>=', searchTerm.toLowerCase()],
+                    ['name', '<=', searchTerm.toLowerCase() + '\uf8ff']
+                ],
+                orderBy: ['name', 'asc'],
+                limit: pageSize * 2, // زيادة النتائج للبحث
+                fields: ['name', 'email', 'job_title', 'permissions', 'isActive']
+            }
+        );
+        
+        currentPage = 1;
+        lastVisible = null;
+        renderUsersTable(users);
+        renderPaginationControls(users.length);
+        
+        window.notify(`تم العثور على ${users.length} مستخدم`, 'success');
+    } catch (error) {
+        console.error("Search error:", error);
+        window.notify("خطأ في البحث", "error");
     }
 }
 
@@ -425,6 +552,10 @@ function setupEventListeners() {
                     permissions: userData.permissions,
                     isActive: userData.isActive
                 }, { merge: true });
+                
+                // إبطال الكاش للكولكشن بعد التحديث
+                firebaseOptimizer.invalidateCache('users');
+                
                 window.notify('تم تحديث بيانات المستخدم والصلاحيات', 'success');
             } else {
                 // Use secondaryAuth to create user without logging out the current admin
@@ -449,6 +580,9 @@ function setupEventListeners() {
 
                 // Immediately sign out from the secondary instance
                 await signOut(secondaryAuth);
+                
+                // إبطال الكاش بعد إضافة مستخدم جديد
+                firebaseOptimizer.invalidateCache('users');
                 
                 window.notify(`تم إنشاء حساب ${userData.name} بنجاح. يمكنه الآن تسجيل الدخول باستخدام البريد الإلكتروني.`, 'success');
             }

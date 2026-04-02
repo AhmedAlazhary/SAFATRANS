@@ -1833,43 +1833,126 @@ function loadChangeLog() {
   });
 }
 
+// Pagination variables for daily data
+let currentPage = 1;
+const pageSize = 20;
+let lastVisible = null;
+let totalDays = 0;
+
+// تحسين دالة loadAllData مع pagination
 function loadAllData() {
-  db.ref("daily").on("value", snap => {
-    const serverData = normalizeSnapshotData(snap.val());
-    const editingInfo = getActiveEditingInfo();
-
-    if (editingInfo) {
-      dailyData = mergeServerDataPreservingEditing(serverData, editingInfo);
-      refreshBaseUpdatedAtFromServer(serverData);
-      Object.keys(serverData).forEach(date => {
-        if (!dirtyDates[date]) {
-          clearDraft(date);
-        }
-      });
-      ensureDateRows(currentDate);
-      renderArchive();
-      updateMonthSummary();
-      setCurrentStatus("تم استقبال تحديثات جديدة بدون المساس بالخلية الجاري تعديلها.");
-      return;
+  // استخدام Smart Polling بدلاً من Real-time Listener لتقليل استهلاك Firebase
+  if (window.dailyDataListener) {
+    window.dailyDataListener.stop();
+  }
+  
+  window.dailyDataListener = realtimeOptimizer.createSmartPolling(
+    db.ref("daily"),
+    {
+      callback: (snap) => {
+        const serverData = normalizeSnapshotData(snap.val());
+        const editingInfo = getActiveEditingInfo();
+        
+        // دمج البيانات مع البيانات المحلية المحفوظة
+        Object.keys(serverData).forEach(date => {
+          if (!dirtyDates[date]) {
+            dailyData[date] = serverData[date] || { rows: [] };
+          }
+        });
+        
+        // تحديث الواجهة مع pagination
+        renderAll();
+        updateDailyTripsTotal(currentDate);
+        renderPaginationControls();
+      },
+      pollingInterval: 15000, // 15 ثانية فقط
+      useCache: true
     }
+  );
+}
 
-    dailyData = serverData;
-    refreshBaseUpdatedAtFromServer(serverData);
-    Object.keys(serverData).forEach(date => {
-      if (!dirtyDates[date]) {
-        clearDraft(date);
-      }
-    });
-    ensureDateRows(currentDate);
-    renderAll();
-    setCurrentStatus("تم تحميل البيانات وتحديثها مباشرة.");
-  }, () => {
-    dailyData = {};
-    mergeLocalDraftsFallback();
-    ensureDateRows(currentDate);
-    renderAll();
-    setCurrentStatus("تعذر تحميل البيانات من الخادم، تم فتح النسخ المحلية المتاحة.", true);
-  });
+// دالة عرض أزرار pagination للبيانات اليومية
+function renderPaginationControls() {
+  const paginationContainer = document.getElementById('dailyPaginationControls');
+  if (!paginationContainer) return;
+  
+  const allDates = Object.keys(dailyData).sort().reverse();
+  const totalPages = Math.ceil(allDates.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentDates = allDates.slice(startIndex, endIndex);
+  
+  const isFirstPage = currentPage === 1;
+  const isLastPage = endIndex >= allDates.length;
+  
+  paginationContainer.innerHTML = `
+    <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <button onclick="changePage(${currentPage - 1})" 
+              ${isFirstPage ? 'disabled' : ''} 
+              class="primary-btn" 
+              style="padding: 8px 16px;">
+        السابق
+      </button>
+      <span style="font-weight: bold; color: #495057;">
+        الصفحة ${currentPage} من ${totalPages}
+      </span>
+      <button onclick="changePage(${currentPage + 1})" 
+              ${isLastPage ? 'disabled' : ''} 
+              class="primary-btn" 
+              style="padding: 8px 16px;">
+        التالي
+      </button>
+      <span style="color: #6c757d; margin-right: 20px;">
+        (${currentDates.length} يوم من ${allDates.length} إجمالي)
+      </span>
+    </div>
+  `;
+}
+
+// دالة تغيير الصفحة
+window.changePage = async (page) => {
+  currentPage = Math.max(1, page);
+  renderArchive();
+  renderPaginationControls();
+};
+
+// تحسين دالة renderArchive مع pagination
+function renderArchive() {
+  const allDates = Object.keys(dailyData).sort().reverse();
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentDates = allDates.slice(startIndex, endIndex);
+  
+  archiveContainer.innerHTML = currentDates.map(date => {
+    const dayData = dailyData[date] || [];
+    const total = dayData.reduce((sum, row) => sum + Number(row.containerCount || 0), 0);
+    const officeTotal = dayData.reduce((sum, row) => row.carType === "مكتب" ? sum + Number(row.containerCount || 0) : sum, 0);
+    const marketTotal = dayData.reduce((sum, row) => row.carType === "سوق" ? sum + Number(row.containerCount || 0) : sum, 0);
+    
+    return `
+      <div class="card">
+        <div class="card-date">${formatArabicDate(date)}</div>
+        <div class="archive-month-stats">
+          <span class="archive-stat">إجمالي الحاويات: ${total}</span>
+          <span class="archive-stat">المكتب: ${officeTotal}</span>
+          <span class="archive-stat">السوق: ${marketTotal}</span>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button onclick="focusDate('${date}')" class="primary-btn" style="padding: 6px 12px; font-size: 0.9rem;">فتح</button>
+          <button onclick="deleteDay('${date}')" class="danger-btn" style="padding: 6px 12px; font-size: 0.9rem;">حذف</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // إضافة حاوية pagination إذا لم تكن موجودة
+  if (!document.getElementById('dailyPaginationControls')) {
+    const paginationDiv = document.createElement('div');
+    paginationDiv.id = 'dailyPaginationControls';
+    archiveContainer.parentNode.insertBefore(paginationDiv, archiveContainer.nextSibling);
+  }
+  
+  renderPaginationControls();
 }
 
 function focusDate(date) {

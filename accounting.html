@@ -565,33 +565,184 @@ async function postJournalEntry() {
   alert("تم ترحيل القيد.");
 }
 
-onSnapshot(collection(db, "AccountingAccounts"), snap => {
-  accountsMap = new Map();
-  snap.forEach(docSnap => {
-    accountsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-  });
-  renderAccountsBody();
-  if (canManage) {
-    const lines = collectLinesFromDom();
-    renderJournalLines(lines.length >= 2 ? lines : [emptyLine(), emptyLine()]);
+// Pagination variables for accounting data
+let currentPage = 1;
+const pageSize = 50;
+let lastVisible = null;
+let totalEntries = 0;
+
+// تحسين تحميل الحسابات باستخدام النظام الشامل
+function loadAccountsOptimized() {
+  // استخدام smart polling بدلاً من real-time listener
+  if (window.accountsListener) {
+    window.accountsListener.stop();
   }
-  rebuildLedgerAndTrial();
-});
+  
+  window.accountsListener = realtimeOptimizer.createSmartPolling(
+    collection(db, "AccountingAccounts"),
+    {
+      callback: (snap) => {
+        accountsMap = new Map();
+        snap.forEach(docSnap => {
+          accountsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+        });
+        rebuildLedgerAndTrial();
+        comprehensiveFirebaseOptimizer.logPerformance('Accounts loaded', accountsMap.size);
+      },
+      pollingInterval: 60000, // دقيقة واحدة للحسابات (بيانات ثابتة نسبياً)
+      useCache: true,
+      ttl: 10 * 60 * 1000 // 10 دقائق للكاش
+    }
+  );
+}
 
-onSnapshot(collection(db, "JournalEntries"), snap => {
-  entries = [];
-  snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
-  entries.sort((a, b) => {
-    const ta = a.createdAt?.toMillis?.() ?? 0;
-    const tb = b.createdAt?.toMillis?.() ?? 0;
-    return tb - ta;
-  });
-  rebuildLedgerAndTrial();
-});
+// تحسين تحميل القيود المحاسبية مع pagination
+function loadJournalEntriesOptimized() {
+  // استخدام smart polling مع pagination
+  if (window.journalListener) {
+    window.journalListener.stop();
+  }
+  
+  window.journalListener = realtimeOptimizer.createSmartPolling(
+    collection(db, "JournalEntries"),
+    {
+      callback: (snap) => {
+        entries = [];
+        snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+        entries.sort((a, b) => (a.date || "").localeCompare(b.date || "", "ar", { numeric: true }));
+        
+        // تطبيق pagination
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedEntries = entries.slice(startIndex, endIndex);
+        
+        rebuildLedgerAndTrial();
+        renderPaginationControls();
+        comprehensiveFirebaseOptimizer.logPerformance('Journal entries loaded', paginatedEntries.length);
+      },
+      pollingInterval: 30000, // 30 ثانية للقيود
+      useCache: true,
+      ttl: 5 * 60 * 1000 // 5 دقائق للكاش
+    }
+  );
+}
 
+// دالة عرض أزرار pagination للمحاسبة
+function renderPaginationControls() {
+  const paginationContainer = document.getElementById('accountingPaginationControls');
+  if (!paginationContainer) return;
+  
+  const totalPages = Math.ceil(entries.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, entries.length);
+  
+  const isFirstPage = currentPage === 1;
+  const isLastPage = endIndex >= entries.length;
+  
+  paginationContainer.innerHTML = `
+    <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <button onclick="changeAccountingPage(${currentPage - 1})" 
+              ${isFirstPage ? 'disabled' : ''} 
+              class="primary-btn" 
+              style="padding: 8px 16px;">
+        السابق
+      </button>
+      <span style="font-weight: bold; color: #495057;">
+        الصفحة ${currentPage} من ${totalPages}
+      </span>
+      <button onclick="changeAccountingPage(${currentPage + 1})" 
+              ${isLastPage ? 'disabled' : ''} 
+              class="primary-btn" 
+              style="padding: 8px 16px;">
+        التالي
+      </button>
+      <span style="color: #6c757d; margin-right: 20px;">
+        (${endIndex - startIndex} قيد من ${entries.length} إجمالي)
+      </span>
+    </div>
+  `;
+}
+
+// دالة تغيير الصفحة للمحاسبة
+window.changeAccountingPage = async (page) => {
+  currentPage = Math.max(1, page);
+  rebuildLedgerAndTrial();
+  renderPaginationControls();
+};
+
+// تحسين دالة rebuildLedgerAndTrial مع pagination
 function rebuildLedgerAndTrial() {
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedEntries = entries.slice(startIndex, endIndex);
+  
   const ledgerBody = document.getElementById("ledgerBody");
+  const canManage = state.permissions?.accounting?.canEdit;
   ledgerBody.innerHTML = "";
+  
+  paginatedEntries.forEach((entry, entryIdx) => {
+    (entry.lines || []).forEach((ln, idx) => {
+      const acc = accountsMap.get(ln.accountId);
+      const accLabel = acc ? `${acc.code} — ${acc.name}` : ln.accountId;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${idx === 0 ? escapeHtml(entry.date || "") : ""}</td>
+        <td>${idx === 0 ? escapeHtml(entry.memo || "") : ""}</td>
+        <td>${escapeHtml(accLabel)}</td>
+        <td>${ln.debit ? Number(ln.debit).toFixed(2) : ""}</td>
+        <td>${ln.credit ? Number(ln.credit).toFixed(2) : ""}</td>
+        <td class="entry-del" style="display:${canManage ? "" : "none"}">
+          ${idx === 0 ? `<button type="button" class="danger btn-del-entry" data-id="${entry.id}">حذف القيد</button>` : ""}
+        </td>
+      `;
+      ledgerBody.appendChild(tr);
+    });
+  });
+
+  ledgerBody.querySelectorAll(".btn-del-entry").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("حذف القيد بالكامل؟")) return;
+      
+      // استخدام optimized delete
+      await comprehensiveFirebaseOptimizer.optimizedDelete(
+        collection(db, "JournalEntries"), 
+        btn.dataset.id
+      );
+      
+      comprehensiveFirebaseOptimizer.logPerformance('Journal entry deleted', btn.dataset.id);
+    });
+  });
+
+  // حساب المجاميع لجميع القيود (ليس فقط الصفحة الحالية)
+  const totals = new Map();
+  entries.forEach(entry => {
+    (entry.lines || []).forEach(ln => {
+      const acc = accountsMap.get(ln.accountId);
+      if (!acc) return;
+      const cur = totals.get(ln.accountId) || { debit: 0, credit: 0, code: acc.code, name: acc.name };
+      cur.debit += ln.debit || 0;
+      cur.credit += ln.credit || 0;
+      totals.set(ln.accountId, cur);
+    });
+  });
+
+  const trialBody = document.getElementById("trialBody");
+  trialBody.innerHTML = "";
+  [...totals.values()]
+    .sort((a, b) => (a.code || "").localeCompare(b.code || "", "ar", { numeric: true }))
+    .forEach(t => {
+      const balance = t.debit - t.credit;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(t.code)}</td>
+        <td>${escapeHtml(t.name)}</td>
+        <td>${t.debit.toFixed(2)}</td>
+        <td>${t.credit.toFixed(2)}</td>
+        <td>${balance.toFixed(2)}</td>
+      `;
+      trialBody.appendChild(tr);
+    });
+}
 
   entries.forEach(entry => {
     const lines = entry.lines || [];

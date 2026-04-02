@@ -210,6 +210,8 @@ th { background: var(--accent); color: #fff; white-space: nowrap; font-weight: 7
               <th>البريد الإلكتروني</th>
               <th>كلمة المرور</th>
               <th>الدور</th>
+              <th>الصلاحيات</th>
+              <th>الحالة</th>
               <th>إجراءات</th>
             </tr>
           </thead>
@@ -261,8 +263,9 @@ th { background: var(--accent); color: #fff; white-space: nowrap; font-weight: 7
       <div class="field">
         <label for="userRole">الدور</label>
         <select id="userRole">
-          <option value="ADMIN">Admin</option>
-          <option value="USER">User</option>
+          <option value="ADMIN">مدير (Admin)</option>
+          <option value="ACCOUNTANT">حسابات (Accountant)</option>
+          <option value="USER">مستخدم/سائق (User)</option>
         </select>
       </div>
       <div class="field" style="margin-top: 15px;">

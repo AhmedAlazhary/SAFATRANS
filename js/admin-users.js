@@ -41,8 +41,19 @@ window.editUser = async (id) => {
             document.getElementById('userPassword').value = user.password || ''; 
             document.getElementById('userRole').value = user.role || 'USER';
             
-            // Update permissions UI based on role
+            // Update permissions UI based on role and current permissions
             updatePermissionsUI(user.role || 'USER');
+            
+            // If user is admin, populate current permissions
+            if (user.role === 'ADMIN' && user.permissions) {
+                Object.keys(user.permissions).forEach(page => {
+                    const viewCheckbox = document.querySelector(`input[name="perm_${page}_view"]`);
+                    const editCheckbox = document.querySelector(`input[name="perm_${page}_edit"]`);
+                    
+                    if (viewCheckbox) viewCheckbox.checked = user.permissions[page].view || false;
+                    if (editCheckbox) editCheckbox.checked = user.permissions[page].edit || false;
+                });
+            }
             
             document.getElementById('modalTitle').textContent = 'تعديل بيانات المستخدم';
             userModal.style.display = 'block';
@@ -132,41 +143,112 @@ window.rejectRequest = async (id) => {
 // --- Helper Functions ---
 let usersUnsubscribe = null;
 
-// دالة تحديد الصلاحيات بناءً على الدور
-function getRolePermissions(role) {
+// دالة تحديد الصلاحيات بناءً على الدور (Property-Based)
+function getDefaultPermissions(role) {
     const permissions = {
-        'ADMIN': ['transport-data', 'prices', 'daily', 'drivers-roles', 'treasury-system', 'garage', 'accounting', 'admin-users', 'profile'],
-        'ACCOUNTANT': ['daily', 'accounting', 'profile'], // حسابات: قراءة فقط للشغل اليومي والمحاسبة
-        'USER': ['profile'] // مستخدم عادي: بروفايل فقط
+        'ADMIN': {
+            'transport-data': { view: true, edit: true },
+            'prices': { view: true, edit: true },
+            'daily': { view: true, edit: true },
+            'drivers-roles': { view: true, edit: true },
+            'treasury-system': { view: true, edit: true },
+            'garage': { view: true, edit: true },
+            'accounting': { view: true, edit: true },
+            'admin-users': { view: true, edit: true },
+            'profile': { view: true, edit: true }
+        },
+        'ACCOUNTANT': {
+            'daily': { view: true, edit: false }, // حسابات: قراءة فقط للشغل اليومي
+            'accounting': { view: true, edit: true }, // المحاسبة: قراءة وتعديل
+            'profile': { view: true, edit: true }
+        },
+        'USER': {
+            'profile': { view: true, edit: true } // مستخدم عادي: بروفايل فقط
+        }
     };
-    return permissions[role] || [];
+    return permissions[role] || { 'profile': { view: true, edit: false } };
 }
 
 // دالة تحديث الصلاحيات في الواجهة عند تغيير الدور
 function updatePermissionsUI(role) {
-    const permissions = getRolePermissions(role);
+    const permissions = getDefaultPermissions(role);
     const container = document.getElementById('permissionsContainer');
     
     if (role === 'ADMIN') {
         // للمدير: إظهار جميع الصلاحيات للاختيار
-        container.innerHTML = APP_PAGES.map(page => `
-            <label style="display: flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer;">
-                <input type="checkbox" name="pagePermission" value="${page.id}" checked>
-                ${page.label}
-            </label>
+        const pages = [
+            { id: 'transport-data', label: 'بيانات النقلات' },
+            { id: 'prices', label: 'أسعار الحاويات' },
+            { id: 'daily', label: 'بيان الشغل اليومي' },
+            { id: 'drivers-roles', label: 'أدوار السواقين' },
+            { id: 'treasury-system', label: 'الخزنة والتشغيل' },
+            { id: 'garage', label: 'الجراج والمخزن' },
+            { id: 'accounting', label: 'المحاسبة العامة' },
+            { id: 'admin-users', label: 'إدارة المستخدمين' },
+            { id: 'profile', label: 'الملف الشخصي' }
+        ];
+        
+        container.innerHTML = pages.map(page => `
+            <div style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; background: #f9f9f9;">
+                <div style="font-weight: bold; margin-bottom: 6px; color: #333;">${page.label}</div>
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer;">
+                    <input type="checkbox" name="perm_${page.id}_view" checked>
+                    <span style="font-size: 0.85rem;">عرض الصفحة</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="perm_${page.id}_edit" checked>
+                    <span style="font-size: 0.85rem;">إمكانية التعديل</span>
+                </label>
+            </div>
         `).join('');
     } else {
         // للحسابات والمستخدمين: إخفاء اختيار الصلاحيات وعرض رسالة
+        const roleLabels = {
+            'ACCOUNTANT': 'حسابات',
+            'USER': 'مستخدم'
+        };
+        
         container.innerHTML = `
             <div style="padding: 15px; background: #e3f2fd; border-radius: 6px; color: #1976d2; font-size: 0.9rem; text-align: center;">
-                <strong>الصلاحيات محددة مسبقاً بناءً على الدور</strong><br>
+                <strong>الصلاحيات محددة مسبقاً بناءً على دور ${roleLabels[role]}</strong><br>
                 ${role === 'ACCOUNTANT' ? 
-                    'دور الحسابات: صلاحية قراءة للشغل اليومي والمحاسبة فقط' : 
-                    'دور المستخدم: صلاحية الملف الشخصي فقط'
+                    'دور الحسابات: عرض الشغل اليومي (قراءة فقط) + المحاسبة (تعديل)' : 
+                    'دور المستخدم: الملف الشخصي فقط'
                 }
             </div>
         `;
     }
+}
+
+// دالة لجمع الصلاحيات من الواجهة
+function collectPermissionsFromUI() {
+    const pages = [
+        'transport-data', 'prices', 'daily', 'drivers-roles', 
+        'treasury-system', 'garage', 'accounting', 'admin-users', 'profile'
+    ];
+    
+    const permissions = {};
+    pages.forEach(page => {
+        const viewCheckbox = document.querySelector(`input[name="perm_${page}_view"]`);
+        const editCheckbox = document.querySelector(`input[name="perm_${page}_edit"]`);
+        
+        permissions[page] = {
+            view: viewCheckbox ? viewCheckbox.checked : false,
+            edit: editCheckbox ? editCheckbox.checked : false
+        };
+    });
+    
+    return permissions;
+}
+
+// دالة تحديد المسمى الوظيفي بناءً على الدور
+function getJobTitleFromRole(role) {
+    const jobTitles = {
+        'ADMIN': 'مدير نظام',
+        'ACCOUNTANT': 'محاسب',
+        'USER': 'مستخدم'
+    };
+    return jobTitles[role] || 'مستخدم';
 }
 
 async function loadUsers() {
@@ -205,8 +287,11 @@ function renderUsersTable(users) {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
     tableBody.innerHTML = users.map(user => {
-        const permissions = user.allowedPages || [];
-        const permissionsText = permissions.length > 0 ? permissions.slice(0, 3).join(', ') + (permissions.length > 3 ? '...' : '') : 'لا توجد صلاحيات';
+        const permissions = user.permissions || {};
+        const permissionsText = Object.keys(permissions)
+            .filter(page => permissions[page].view)
+            .slice(0, 3)
+            .join(', ') + (Object.keys(permissions).filter(page => permissions[page].view).length > 3 ? '...' : '');
         const isActive = user.isActive !== false; // Default to true
         const statusBadge = isActive ? 
             '<span style="color: #27ae60; font-weight: bold;">✓ نشط</span>' : 
@@ -242,7 +327,7 @@ function renderUsersTable(users) {
                         ${getRoleLabel(user.role)}
                     </span>
                 </td>
-                <td title="${permissions.join(', ')}">${permissionsText}</td>
+                <td title="${Object.keys(permissions).filter(page => permissions[page].view).join(', ')}">${permissionsText || 'لا توجد صلاحيات'}</td>
                 <td>${statusBadge}</td>
                 <td>
                     <button class="primary-btn" onclick="window.editUser('${user.id}')">تعديل</button>
@@ -331,13 +416,12 @@ function setupEventListeners() {
         e.preventDefault();
         const userId = document.getElementById('userId').value;
         
-        // Collect selected permissions (only for admin)
-        let selectedPermissions = [];
+        // Collect permissions from UI (only for admin)
+        let permissions = {};
         if (document.getElementById('userRole').value === 'ADMIN') {
-            selectedPermissions = Array.from(document.querySelectorAll('input[name="pagePermission"]:checked'))
-                .map(cb => cb.value);
+            permissions = collectPermissionsFromUI();
         } else {
-            selectedPermissions = getRolePermissions(document.getElementById('userRole').value);
+            permissions = getDefaultPermissions(document.getElementById('userRole').value);
         }
 
         const rawEmail = document.getElementById('userEmail').value.trim();
@@ -349,7 +433,8 @@ function setupEventListeners() {
             email: userEmail,
             password: document.getElementById('userPassword').value,
             role: document.getElementById('userRole').value,
-            allowedPages: selectedPermissions
+            permissions: permissions,
+            job_title: getJobTitleFromRole(document.getElementById('userRole').value)
         };
 
         try {
@@ -358,7 +443,8 @@ function setupEventListeners() {
                     name: userData.name,
                     email: userData.email,
                     role: userData.role,
-                    allowedPages: userData.allowedPages
+                    permissions: userData.permissions,
+                    job_title: userData.job_title
                 }, { merge: true });
                 window.notify('تم تحديث بيانات المستخدم والصلاحيات', 'success');
             } else {
@@ -371,16 +457,13 @@ function setupEventListeners() {
                 const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password);
                 const newUser = userCredential.user;
                 
-                // التأكد من وجود صلاحيات للمستخدم الجديد
-                const defaultRole = userData.role || 'USER';
-                const defaultPages = getRolePermissions(defaultRole);
-                
                 // Create user profile in Firestore using the NEW UID from Authentication
                 await setDoc(doc(firestore, 'users', newUser.uid), {
                     name: userData.name,
                     email: userData.email,
-                    role: defaultRole,
-                    allowedPages: defaultPages,
+                    role: userData.role,
+                    permissions: userData.permissions,
+                    job_title: userData.job_title,
                     createdAt: new Date().toISOString(),
                     createdBy: currentUser.uid,
                     isActive: true
@@ -394,8 +477,8 @@ function setupEventListeners() {
             userModal.style.display = 'none';
             await loadUsers();
         } catch (error) {
-            console.error("Form error:", error);
-            window.notify(`حدث خطأ: ${error.message}`, 'error');
+            console.error("Save error:", error);
+            window.notify(error.message || "خطأ في حفظ بيانات المستخدم", "error");
         }
     };
     

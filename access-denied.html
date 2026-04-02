@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>وصول مرفوض - مكتب الصفا</title>
+
+<style>
+:root {
+  --primary: #1f4f7a;
+  --primary-dark: #173b5b;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --surface: rgba(255, 255, 255, 0.95);
+  --text: #1f2937;
+  --muted: #5f6b7a;
+  --border: #d4dce5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #eef4fa 0%, #dfeaf4 100%);
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("logo.png") no-repeat center center;
+  background-size: min(62vw, 420px);
+  filter: blur(22px);
+  opacity: 0.17;
+  z-index: 0;
+}
+
+.access-denied-box {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  padding: 40px 30px;
+  border-radius: 22px;
+  width: min(92vw, 500px);
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+.access-denied-box img {
+  width: clamp(95px, 18vw, 130px);
+  margin-bottom: 20px;
+}
+
+.access-denied-title {
+  margin: 0 0 15px;
+  color: var(--danger);
+  font-size: clamp(1.3rem, 2.8vw, 1.8rem);
+  line-height: 1.6;
+  font-weight: bold;
+}
+
+.access-denied-subtitle {
+  margin: 0 0 25px;
+  color: var(--muted);
+  font-size: clamp(0.95rem, 2.1vw, 1.1rem);
+  line-height: 1.8;
+}
+
+.access-denied-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: var(--danger);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.access-denied-message strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+}
+
+.back-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 5px;
+}
+
+.back-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.logout-btn {
+  background: var(--danger);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 5px;
+}
+
+.logout-btn:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+@media (max-width: 480px) {
+  .access-denied-box {
+    width: calc(100vw - 24px);
+    padding: 30px 20px;
+    border-radius: 18px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .back-btn, .logout-btn {
+    width: 100%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="access-denied-box">
+  <img src="logo.gif" alt="شعار مكتب الصفا">
+  <h2 class="access-denied-title">🚫 وصول مرفوض</h2>
+  <p class="access-denied-subtitle">ليس لديك صلاحية للوصول إلى هذه الصفحة</p>
+  
+  <div class="access-denied-message">
+    <strong>سبب الرفض:</strong>
+    <p>لا تملك الصلاحيات اللازمة لعرض هذه الصفحة. يرجى التواصل مع مدير النظام للحصول على الصلاحيات المناسبة.</p>
+  </div>
+
+  <div class="actions">
+    <button class="back-btn" onclick="goToDashboard()">العودة للوحة التحكم</button>
+    <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyARqSgfh78TqFQ2hhZaAtUaVQFqlPuRM3w",
+  authDomain: "trialsafaprices2026.firebaseapp.com",
+  projectId: "trialsafaprices2026",
+  storageBucket: "trialsafaprices2026.appspot.com",
+  messagingSenderId: "177091434445",
+  appId: "1:177091434445:web:568b6ae3ba270a21d4d684"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+function goToDashboard() {
+  window.location.href = 'dashboard.html';
+}
+
+function logout() {
+  firebase.auth().signOut().then(() => {
+    window.location.href = 'index.html';
+  }).catch((error) => {
+    console.error('Logout error:', error);
+    window.location.href = 'index.html';
+  });
+}
+
+// Auto-redirect after 10 seconds
+setTimeout(() => {
+  goToDashboard();
+}, 10000);
+</script>
+
+</body>
+</html>

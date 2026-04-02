@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - only admins can read/write all
+    match /users/{userId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == userId || // Users can read/write their own data
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'
+      );
+    }
+    
+    // Daily data - property-based permissions
+    match /daily/{date} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.daily.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.daily.edit == true;
+      
+      // Nested rows
+      match /rows/{rowId} {
+        allow read: if request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.daily.view == true;
+        allow write, update, delete: if request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.daily.edit == true;
+      }
+    }
+    
+    // Transport data - property-based permissions
+    match /transportData/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['transport-data'].view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['transport-data'].edit == true;
+    }
+    
+    // Prices - property-based permissions
+    match /prices/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.prices.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.prices.edit == true;
+    }
+    
+    // Drivers roles - property-based permissions
+    match /drivers/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['drivers-roles'].view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['drivers-roles'].edit == true;
+    }
+    
+    // Treasury system - property-based permissions
+    match /treasury/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['treasury-system'].view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['treasury-system'].edit == true;
+    }
+    
+    // Garage - property-based permissions
+    match /garage/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.garage.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.garage.edit == true;
+    }
+    
+    // Accounting - property-based permissions
+    match /accounting/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.accounting.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.accounting.edit == true;
+    }
+    
+    // Admin users - property-based permissions
+    match /adminUsers/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['admin-users'].view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['admin-users'].edit == true;
+    }
+    
+    // Profile - property-based permissions
+    match /profiles/{docId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.profile.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.profile.edit == true;
+    }
+    
+    // Inventory - fallback to garage permissions
+    match /Inventory/{itemId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.garage.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.garage.edit == true;
+    }
+    
+    // Job Orders - fallback to garage permissions
+    match /JobOrders/{jobId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.garage.view == true;
+      allow write, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.garage.edit == true;
+    }
+    
+    // Change requests - only admins can approve
+    match /changeRequests/{requestId} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['admin-users'].view == true;
+    }
+    
+    // Shared lists - all authenticated users
+    match /sharedLists/{listId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

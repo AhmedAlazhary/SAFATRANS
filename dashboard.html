@@ -421,7 +421,7 @@ onAuthStateChanged(auth, async user => {
     if (userDoc.exists()) {
       const userData = userDoc.data();
       state.role = userData.role || 'USER';
-      state.permissions = userData.allowedPages || [];
+      state.permissions = userData.permissions || {};
       state.userProfile = userData;
     } else {
       // Fallback to Staff collection
@@ -433,14 +433,14 @@ onAuthStateChanged(auth, async user => {
         state.userProfile = staffData;
       } else {
         state.role = 'USER';
-        state.permissions = ['profile'];
+        state.permissions = getDefaultPermissions('USER');
         state.userProfile = {};
       }
     }
   } catch (error) {
     console.error("Error loading user permissions:", error);
     state.role = 'USER';
-    state.permissions = ['profile'];
+    state.permissions = getDefaultPermissions('USER');
   }
 
   userRoleLabel.textContent = `الدور الحالي: ${getRoleLabel(state.role)}`;
@@ -448,57 +448,67 @@ onAuthStateChanged(auth, async user => {
   // تطبيق الصلاحيات على واجهة المستخدم
   applyPermissions();
   
-  // تطبيق التحكم في العناصر بناءً على الدور
-  applyRoleBasedControls();
+  // تطبيق التحكم في العناصر بناءً على الصلاحيات الجديدة
+  applyPropertyBasedControls();
   
   startRealtimeListeners();
 });
 
 function getDefaultPermissions(role) {
   const permissions = {
-    'ADMIN': ['transport-data', 'prices', 'daily', 'drivers-roles', 'treasury-system', 'garage', 'accounting', 'admin-users', 'profile'],
-    'ACCOUNTANT': ['daily', 'accounting', 'profile'], // حسابات: قراءة فقط
-    'USER': ['profile'] // مستخدم عادي: بروفايل فقط
+    'ADMIN': {
+      'transport-data': { view: true, edit: true },
+      'prices': { view: true, edit: true },
+      'daily': { view: true, edit: true },
+      'drivers-roles': { view: true, edit: true },
+      'treasury-system': { view: true, edit: true },
+      'garage': { view: true, edit: true },
+      'accounting': { view: true, edit: true },
+      'admin-users': { view: true, edit: true },
+      'profile': { view: true, edit: true }
+    },
+    'ACCOUNTANT': {
+      'daily': { view: true, edit: false }, // حسابات: قراءة فقط للشغل اليومي
+      'accounting': { view: true, edit: true }, // المحاسبة: قراءة وتعديل
+      'profile': { view: true, edit: true }
+    },
+    'USER': {
+      'profile': { view: true, edit: true } // مستخدم عادي: بروفايل فقط
+    }
   };
-  return permissions[role] || [];
+  return permissions[role] || { 'profile': { view: true, edit: false } };
 }
 
-function applyRoleBasedControls() {
-  // Hide elements based on user role
-  switch(state.role) {
-    case 'USER':
-      // Hide all management navigation for regular users
-      document.querySelectorAll('.nav-card').forEach(card => {
-        const button = card.querySelector('button');
-        if (button && button.dataset.target !== 'profile.html') {
-          card.style.display = 'none';
-        }
-      });
-      break;
-      
-    case 'ACCOUNTANT':
-      // Show only daily, accounting, and profile for accountants
-      document.querySelectorAll('.nav-card').forEach(card => {
-        const button = card.querySelector('button');
-        if (button) {
-          const target = button.dataset.target;
-          const allowedTargets = ['daily.html', 'accounting.html', 'profile.html'];
-          if (!allowedTargets.includes(target)) {
-            card.style.display = 'none';
-          } else {
-            card.style.display = 'block';
-          }
-        }
-      });
-      break;
-      
-    case 'ADMIN':
-      // Show everything for admins
-      document.querySelectorAll('.nav-card').forEach(card => {
+function applyPropertyBasedControls() {
+  // Hide/show navigation cards based on permissions
+  const pagePermissions = {
+    'transport-data.html': 'transport-data',
+    'prices.html': 'prices',
+    'daily.html': 'daily',
+    'drivers-roles-page.html': 'drivers-roles',
+    'treasury-system.html': 'treasury-system',
+    'garage.html': 'garage',
+    'accounting.html': 'accounting',
+    'admin-users.html': 'admin-users',
+    'profile.html': 'profile'
+  };
+
+  document.querySelectorAll('.nav-card').forEach(card => {
+    const button = card.querySelector('button');
+    if (!button) return;
+
+    const targetPage = button.dataset.target;
+    const requiredPermission = pagePermissions[targetPage];
+
+    if (requiredPermission) {
+      const userPermission = state.permissions[requiredPermission];
+      if (userPermission && userPermission.view) {
         card.style.display = 'block';
-      });
-      break;
-  }
+      } else {
+        card.style.display = 'none';
+      }
+    }
+  });
 }
 
 function applyPermissions() {

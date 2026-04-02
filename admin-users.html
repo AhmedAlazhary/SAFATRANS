@@ -209,7 +209,6 @@ th { background: var(--accent); color: #fff; white-space: nowrap; font-weight: 7
               <th>اسم المستخدم</th>
               <th>البريد الإلكتروني</th>
               <th>كلمة المرور</th>
-              <th>الدور</th>
               <th>الصلاحيات</th>
               <th>الحالة</th>
               <th>إجراءات</th>
@@ -261,12 +260,10 @@ th { background: var(--accent); color: #fff; white-space: nowrap; font-weight: 7
         <input type="text" id="userPassword" required>
       </div>
       <div class="field">
-        <label for="userRole">الدور</label>
-        <select id="userRole">
-          <option value="ADMIN">مدير (Admin)</option>
-          <option value="ACCOUNTANT">حسابات (Accountant)</option>
-          <option value="USER">مستخدم/سائق (User)</option>
-        </select>
+        <label>
+          <input type="checkbox" id="isActive" checked>
+          حساب نشط
+        </label>
       </div>
       <div class="field" style="margin-top: 15px;">
         <label>الصفحات المسموح بها</label>

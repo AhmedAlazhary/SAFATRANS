@@ -39,19 +39,19 @@ window.editUser = async (id) => {
             document.getElementById('userName').value = user.name || '';
             document.getElementById('userEmail').value = user.email || '';
             document.getElementById('userPassword').value = user.password || ''; 
-            document.getElementById('userRole').value = user.role || 'USER';
+            document.getElementById('isActive').checked = user.isActive !== false;
             
-            // Update permissions UI based on role and current permissions
-            updatePermissionsUI(user.role || 'USER');
+            // Update permissions UI with current permissions
+            updatePermissionsUI(user.permissions || {});
             
-            // If user is admin, populate current permissions
-            if (user.role === 'ADMIN' && user.permissions) {
+            // Populate current permissions in the UI
+            if (user.permissions) {
                 Object.keys(user.permissions).forEach(page => {
                     const viewCheckbox = document.querySelector(`input[name="perm_${page}_view"]`);
                     const editCheckbox = document.querySelector(`input[name="perm_${page}_edit"]`);
                     
-                    if (viewCheckbox) viewCheckbox.checked = user.permissions[page].view || false;
-                    if (editCheckbox) editCheckbox.checked = user.permissions[page].edit || false;
+                    if (viewCheckbox) viewCheckbox.checked = user.permissions[page].canView || false;
+                    if (editCheckbox) editCheckbox.checked = user.permissions[page].canEdit || false;
                 });
             }
             
@@ -143,88 +143,80 @@ window.rejectRequest = async (id) => {
 // --- Helper Functions ---
 let usersUnsubscribe = null;
 
-// دالة تحديد الصلاحيات بناءً على الدور (Property-Based)
-function getDefaultPermissions(role) {
-    const permissions = {
-        'ADMIN': {
-            'transport-data': { view: true, edit: true },
-            'prices': { view: true, edit: true },
-            'daily': { view: true, edit: true },
-            'drivers-roles': { view: true, edit: true },
-            'treasury-system': { view: true, edit: true },
-            'garage': { view: true, edit: true },
-            'accounting': { view: true, edit: true },
-            'admin-users': { view: true, edit: true },
-            'profile': { view: true, edit: true }
-        },
-        'ACCOUNTANT': {
-            'daily': { view: true, edit: false }, // حسابات: قراءة فقط للشغل اليومي
-            'accounting': { view: true, edit: true }, // المحاسبة: قراءة وتعديل
-            'profile': { view: true, edit: true }
-        },
-        'USER': {
-            'profile': { view: true, edit: true } // مستخدم عادي: بروفايل فقط
-        }
+// دالة تحديد الصلاحيات الافتراضية للمستخدمين الجدد
+function getDefaultPermissions() {
+    return {
+        'daily_report': { canView: true, canEdit: false },
+        'accounting': { canView: false, canEdit: false },
+        'trips_management': { canView: false, canEdit: false },
+        'drivers_management': { canView: false, canEdit: false },
+        'employees_management': { canView: false, canEdit: false },
+        'prices_management': { canView: false, canEdit: false },
+        'garage_management': { canView: false, canEdit: false },
+        'treasury_management': { canView: false, canEdit: false },
+        'user_management': { canView: false, canEdit: false },
+        'reports': { canView: false, canEdit: false },
+        'profile': { canView: true, canEdit: true }
     };
-    return permissions[role] || { 'profile': { view: true, edit: false } };
 }
 
-// دالة تحديث الصلاحيات في الواجهة عند تغيير الدور
-function updatePermissionsUI(role) {
-    const permissions = getDefaultPermissions(role);
-    const container = document.getElementById('permissionsContainer');
+// دالة بناء قائمة الصفحات البسيطة
+function buildPagesList() {
+    const pages = [
+        { id: 'daily_report', label: 'بيان الشغل اليومي' },
+        { id: 'accounting', label: 'المحاسبة' },
+        { id: 'trips_management', label: 'إدارة النقلات' },
+        { id: 'drivers_management', label: 'إدارة السواقين' },
+        { id: 'employees_management', label: 'إدارة الموظفين' },
+        { id: 'prices_management', label: 'إدارة الأسعار' },
+        { id: 'garage_management', label: 'إدارة الجراج' },
+        { id: 'treasury_management', label: 'إدارة الخزنة' },
+        { id: 'user_management', label: 'إدارة المستخدمين' },
+        { id: 'reports', label: 'التقارير' },
+        { id: 'profile', label: 'الملف الشخصي' }
+    ];
     
-    if (role === 'ADMIN') {
-        // للمدير: إظهار جميع الصلاحيات للاختيار
-        const pages = [
-            { id: 'transport-data', label: 'بيانات النقلات' },
-            { id: 'prices', label: 'أسعار الحاويات' },
-            { id: 'daily', label: 'بيان الشغل اليومي' },
-            { id: 'drivers-roles', label: 'أدوار السواقين' },
-            { id: 'treasury-system', label: 'الخزنة والتشغيل' },
-            { id: 'garage', label: 'الجراج والمخزن' },
-            { id: 'accounting', label: 'المحاسبة العامة' },
-            { id: 'admin-users', label: 'إدارة المستخدمين' },
-            { id: 'profile', label: 'الملف الشخصي' }
-        ];
-        
-        container.innerHTML = pages.map(page => `
-            <div style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; background: #f9f9f9;">
-                <div style="font-weight: bold; margin-bottom: 6px; color: #333;">${page.label}</div>
-                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer;">
-                    <input type="checkbox" name="perm_${page.id}_view" checked>
-                    <span style="font-size: 0.85rem;">عرض الصفحة</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" name="perm_${page.id}_edit" checked>
-                    <span style="font-size: 0.85rem;">إمكانية التعديل</span>
-                </label>
+    return pages;
+}
+
+// دالة تحديث واجهة الصلاحيات البسيطة
+function updatePermissionsUI(userPermissions = {}) {
+    const container = document.getElementById('permissionsContainer');
+    const pages = buildPagesList();
+    
+    container.innerHTML = `
+        <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px;">
+            <h4 style="margin: 0 0 15px 0; color: #495057; font-size: 1rem; text-align: center;">اختر الصلاحيات</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                ${pages.map(page => {
+                    const permissions = userPermissions[page.id] || { canView: false, canEdit: false };
+                    return `
+                        <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px;">
+                            <div style="font-weight: bold; color: #495057; margin-bottom: 8px;">${page.label}</div>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" name="perm_${page.id}_view" ${permissions.canView ? 'checked' : ''}>
+                                    <span style="font-size: 0.9rem;">مشاهدة الصفحة</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" name="perm_${page.id}_edit" ${permissions.canEdit ? 'checked' : ''}>
+                                    <span style="font-size: 0.9rem;">تعديل وحذف</span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
-        `).join('');
-    } else {
-        // للحسابات والمستخدمين: إخفاء اختيار الصلاحيات وعرض رسالة
-        const roleLabels = {
-            'ACCOUNTANT': 'حسابات',
-            'USER': 'مستخدم'
-        };
-        
-        container.innerHTML = `
-            <div style="padding: 15px; background: #e3f2fd; border-radius: 6px; color: #1976d2; font-size: 0.9rem; text-align: center;">
-                <strong>الصلاحيات محددة مسبقاً بناءً على دور ${roleLabels[role]}</strong><br>
-                ${role === 'ACCOUNTANT' ? 
-                    'دور الحسابات: عرض الشغل اليومي (قراءة فقط) + المحاسبة (تعديل)' : 
-                    'دور المستخدم: الملف الشخصي فقط'
-                }
-            </div>
-        `;
-    }
+        </div>
+    `;
 }
 
 // دالة لجمع الصلاحيات من الواجهة
 function collectPermissionsFromUI() {
     const pages = [
-        'transport-data', 'prices', 'daily', 'drivers-roles', 
-        'treasury-system', 'garage', 'accounting', 'admin-users', 'profile'
+        'daily_report', 'accounting', 'trips_management', 'drivers_management',
+        'employees_management', 'prices_management', 'garage_management',
+        'treasury_management', 'user_management', 'reports', 'profile'
     ];
     
     const permissions = {};
@@ -233,8 +225,8 @@ function collectPermissionsFromUI() {
         const editCheckbox = document.querySelector(`input[name="perm_${page}_edit"]`);
         
         permissions[page] = {
-            view: viewCheckbox ? viewCheckbox.checked : false,
-            edit: editCheckbox ? editCheckbox.checked : false
+            canView: viewCheckbox ? viewCheckbox.checked : false,
+            canEdit: editCheckbox ? editCheckbox.checked : false
         };
     });
     
@@ -288,46 +280,19 @@ function renderUsersTable(users) {
     if (!tableBody) return;
     tableBody.innerHTML = users.map(user => {
         const permissions = user.permissions || {};
-        const permissionsText = Object.keys(permissions)
-            .filter(page => permissions[page].view)
-            .slice(0, 3)
-            .join(', ') + (Object.keys(permissions).filter(page => permissions[page].view).length > 3 ? '...' : '');
+        const activePermissions = Object.keys(permissions).filter(page => permissions[page].canView);
+        const permissionsText = activePermissions.slice(0, 3).join(', ') + (activePermissions.length > 3 ? '...' : '');
         const isActive = user.isActive !== false; // Default to true
         const statusBadge = isActive ? 
             '<span style="color: #27ae60; font-weight: bold;">✓ نشط</span>' : 
             '<span style="color: #e74c3c; font-weight: bold;">✗ معطل</span>';
-        
-        // تحديد لون الدور
-        const getRoleColor = (role) => {
-            switch(role) {
-                case 'ADMIN': return '#e74c3c';
-                case 'ACCOUNTANT': return '#f39c12';
-                case 'USER': return '#3498db';
-                default: return '#95a5a6';
-            }
-        };
-        
-        const getRoleLabel = (role) => {
-            switch(role) {
-                case 'ADMIN': return 'مدير';
-                case 'ACCOUNTANT': return 'حسابات';
-                case 'USER': return 'مستخدم';
-                default: return 'غير محدد';
-            }
-        };
         
         return `
             <tr>
                 <td>${user.name || '---'}</td>
                 <td>${user.email || '---'}</td>
                 <td><span style="font-family: monospace;">********</span></td>
-                <td>
-                    <span style="background: ${getRoleColor(user.role)}; 
-                                   color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
-                        ${getRoleLabel(user.role)}
-                    </span>
-                </td>
-                <td title="${Object.keys(permissions).filter(page => permissions[page].view).join(', ')}">${permissionsText || 'لا توجد صلاحيات'}</td>
+                <td title="${activePermissions.join(', ')}">${permissionsText || 'لا توجد صلاحيات'}</td>
                 <td>${statusBadge}</td>
                 <td>
                     <button class="primary-btn" onclick="window.editUser('${user.id}')">تعديل</button>
@@ -397,17 +362,15 @@ function setupEventListeners() {
         userForm.reset();
         document.getElementById('userId').value = '';
         document.getElementById('modalTitle').textContent = 'إضافة مستخدم جديد';
-        updatePermissionsUI('ADMIN'); // Default to admin for new users
+        
+        // Initialize with default permissions
+        updatePermissionsUI(getDefaultPermissions());
+        
+        // Set default values
+        document.getElementById('isActive').checked = true;
+        
         userModal.style.display = 'block';
     };
-
-    // Add event listener for role change
-    const roleSelect = document.getElementById('userRole');
-    if (roleSelect) {
-        roleSelect.onchange = (e) => {
-            updatePermissionsUI(e.target.value);
-        };
-    }
 
     if (closeBtn) closeBtn.onclick = () => { userModal.style.display = 'none'; };
     if (logoutBtn) logoutBtn.onclick = () => signOut(auth);
@@ -416,13 +379,8 @@ function setupEventListeners() {
         e.preventDefault();
         const userId = document.getElementById('userId').value;
         
-        // Collect permissions from UI (only for admin)
-        let permissions = {};
-        if (document.getElementById('userRole').value === 'ADMIN') {
-            permissions = collectPermissionsFromUI();
-        } else {
-            permissions = getDefaultPermissions(document.getElementById('userRole').value);
-        }
+        // Collect permissions from UI
+        const permissions = collectPermissionsFromUI();
 
         const rawEmail = document.getElementById('userEmail').value.trim();
         // التأكد من أن البريد الإلكتروني بتنسيق صحيح، وإذا لم يكن، نضيف نطاقاً افتراضياً
@@ -432,9 +390,8 @@ function setupEventListeners() {
             name: document.getElementById('userName').value.trim().toLowerCase(),
             email: userEmail,
             password: document.getElementById('userPassword').value,
-            role: document.getElementById('userRole').value,
             permissions: permissions,
-            job_title: getJobTitleFromRole(document.getElementById('userRole').value)
+            isActive: document.getElementById('isActive').checked
         };
 
         try {
@@ -442,9 +399,8 @@ function setupEventListeners() {
                 await setDoc(doc(firestore, 'users', userId), {
                     name: userData.name,
                     email: userData.email,
-                    role: userData.role,
                     permissions: userData.permissions,
-                    job_title: userData.job_title
+                    isActive: userData.isActive
                 }, { merge: true });
                 window.notify('تم تحديث بيانات المستخدم والصلاحيات', 'success');
             } else {
@@ -461,18 +417,16 @@ function setupEventListeners() {
                 await setDoc(doc(firestore, 'users', newUser.uid), {
                     name: userData.name,
                     email: userData.email,
-                    role: userData.role,
                     permissions: userData.permissions,
-                    job_title: userData.job_title,
+                    isActive: userData.isActive,
                     createdAt: new Date().toISOString(),
-                    createdBy: currentUser.uid,
-                    isActive: true
+                    createdBy: currentUser.uid
                 });
 
                 // Immediately sign out from the secondary instance
                 await signOut(secondaryAuth);
                 
-                window.notify(`تم إنشاء حساب ${userData.name} بنجاح. يمكنه الآن تسجيل الدخول باستخدام اسم المستخدم أو البريد الإلكتروني.`, 'success');
+                window.notify(`تم إنشاء حساب ${userData.name} بنجاح. يمكنه الآن تسجيل الدخول باستخدام البريد الإلكتروني.`, 'success');
             }
             userModal.style.display = 'none';
             await loadUsers();

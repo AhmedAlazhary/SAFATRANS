@@ -716,6 +716,10 @@ tr:last-child td {
           <label for="datePicker">اختيار التاريخ</label>
           <input type="date" id="datePicker">
         </div>
+        <div class="field">
+          <label>إجمالي نقلات اليوم</label>
+          <input type="text" id="dailyTripsTotal" readonly style="background: #f0f8ff; color: #1976d2; font-weight: bold; text-align: center;">
+        </div>
       </div>
 
       <div class="toolbar-actions">
@@ -811,6 +815,7 @@ const monthContainerTotal = document.getElementById("monthContainerTotal");
 const monthRangeLabel = document.getElementById("monthRangeLabel");
 const summaryMonthPicker = document.getElementById("summaryMonthPicker");
 const archiveSearchInput = document.getElementById("archiveSearchInput");
+const dailyTripsTotal = document.getElementById("dailyTripsTotal");
 
 const DEFAULT_LIST_OPTIONS = {
   sizes: ["20", "40", "2*20"],
@@ -902,6 +907,43 @@ function createRow(overrides = {}) {
     updatedBy: overrides.updatedBy || "",
     lock: overrides.lock || null
   };
+}
+
+// المنطق البرمجي لحساب النقلات الفعلية
+function calculateActualTrips(inputCount, sizeType) {
+    let actualTrips = 0;
+
+    if (sizeType === "20") {
+        // إذا كان الحجم 20: نطبق معادلة الزوجي والفردي
+        // المنطق: (العدد + 1) مقسوم على 2 مع جبر الكسر
+        actualTrips = Math.ceil(inputCount / 2);
+    } 
+    else if (sizeType === "2*20") {
+        // إذا كان الحجم 2*20: العدد كما هو
+        actualTrips = inputCount;
+    }
+    else {
+        // أحجام أخرى (مثل 40): نطبق نفس معادلة 20
+        actualTrips = Math.ceil(inputCount / 2);
+    }
+
+    return actualTrips;
+}
+
+// دالة لتحديث إجمالي نقلات اليوم المحدد
+function updateDailyTripsTotal(date) {
+    const dayData = dailyData[date] || [];
+    let totalTrips = 0;
+    
+    dayData.forEach(row => {
+        const count = Number(row.containerCount || 0);
+        const size = row.size || "";
+        if (count > 0 && size) {
+            totalTrips += calculateActualTrips(count, size);
+        }
+    });
+    
+    dailyTripsTotal.value = totalTrips.toString();
 }
 
 function normalizeRow(row, index = 0) {
@@ -1325,6 +1367,8 @@ function renderArchive() {
 function renderAll() {
   renderCurrentDate();
   renderArchive();
+  // تحديث إجمالي النقلات بعد عرض البيانات
+  updateDailyTripsTotal(currentDate);
 }
 
 // Editing and sync helpers
@@ -1569,6 +1613,11 @@ function handleInput(event) {
     markDateDirty(date);
     saveDraft(date);
     scheduleAutoSave(date);
+    
+    // تحديث إجمالي النقلات عند تغيير العدد أو الحجم
+    if (field === 'containerCount' || field === 'size') {
+      updateDailyTripsTotal(date);
+    }
   }).catch(error => {
     setCurrentStatus(error.message || "تعذر تعديل هذا السطر الآن.", true);
     renderAll();
@@ -1595,6 +1644,12 @@ function handleCellCommit(event) {
     markDateDirty(date);
     saveDraft(date);
     saveSharedOptionForField(field, nextValue);
+    
+    // تحديث إجمالي النقلات عند تغيير العدد أو الحجم
+    if (field === 'containerCount' || field === 'size') {
+      updateDailyTripsTotal(date);
+    }
+    
     return requestImmediateSave(date, rowId).then(() => {
       if (normalizeOptionValue(previousValue) !== normalizeOptionValue(nextValue)) {
         return logChange("row_update", {
@@ -1848,11 +1903,7 @@ function addRow(date) {
 }
 
 function deleteRow(date, rowId) {
-  const row = findRow(date, rowId);
-  if (row && isRowLockedByOther(row)) {
-    setCurrentStatus("لا يمكن حذف هذا السطر لأنه مقفول بواسطة مستخدم آخر.", true);
-    return;
-  }
+  if (!window.confirm("هل أنت متأكد من حذف هذا السطر؟")) return;
 
   syncDateFromDom(date);
   dailyData[date] = (dailyData[date] || []).filter(item => item.id !== rowId);
@@ -1867,6 +1918,8 @@ function deleteRow(date, rowId) {
   db.ref("daily/" + date + "/rows/" + rowId).remove()
     .then(() => {
       setCurrentStatus("تم حذف السطر.");
+      // تحديث إجمالي النقلات بعد الحذف
+      updateDailyTripsTotal(date);
       return logChange("row_delete", {
         date,
         rowId,
@@ -1882,8 +1935,18 @@ function deleteDay(date) {
   db.ref("daily/" + date).remove()
     .then(() => {
       delete dailyData[date];
-      clearDateDirty(date);
-      clearDraft(date);
+      delete dirtyDates[date];
+      delete saveTimers[date];
+      delete savingDates[date];
+      delete pendingImmediateSaves[date];
+      if (activeLocks[date]) {
+        Object.keys(activeLocks[date]).forEach(rowId => releaseRowLock(date, rowId));
+        delete activeLocks[date];
+      }
+      if (lockIntervals[date]) {
+        clearInterval(lockIntervals[date]);
+        delete lockIntervals[date];
+      }
       if (currentDate === date) {
         currentDate = today;
         datePicker.value = currentDate;
@@ -1891,12 +1954,16 @@ function deleteDay(date) {
       ensureDateRows(currentDate);
       renderAll();
       setCurrentStatus("تم حذف اليوم " + date + " بالكامل.");
+      // تحديث إجمالي النقلات بعد حذف اليوم
+      updateDailyTripsTotal(currentDate);
       return logChange("day_delete", {
         date,
         message: `تم حذف يوم ${date} بالكامل`
       });
     })
-    .catch(() => setCurrentStatus("تعذر حذف اليوم الآن.", true));
+    .catch(() => {
+      setCurrentStatus("تعذر حذف اليوم من الخادم الآن.", true);
+    });
 }
 
 function saveDate(date, showAlert = false) {

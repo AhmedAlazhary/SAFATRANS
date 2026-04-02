@@ -127,14 +127,15 @@ button:hover {
   <h3 class="login-title">مرحبًا بك فى نظام مكتب الصفا للنقل</h3>
   <p class="login-subtitle">من فضلك قم بتسجيل الدخول باسم المستخدم وكلمة المرور الخاصة بك والمقدمة من مكتب الصفا للنقل</p>
 
-  <input type="text" id="username" placeholder="اسم المستخدم">
-  <input type="password" id="password" placeholder="كلمة السر">
+  <input type="text" id="username" placeholder="اسم المستخدم" onkeypress="handleKeyPress(event)">
+  <input type="password" id="password" placeholder="كلمة السر" onkeypress="handleKeyPress(event)">
 
   <button onclick="login()">تسجيل الدخول</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
 const firebaseConfig = {
@@ -147,15 +148,37 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-const usersMap = {
-  "ahmed": "ahmed@safatrans.com",
-  "hesham": "hesham@safatrans.com",
-  "omar": "omar@safatrans.com",
-  "sabry": "sabry@safatrans.com"
-};
+let usersMap = {};
 
-function login() {
+// Load users from Firestore
+async function loadUsers() {
+  try {
+    const usersSnapshot = await db.collection('users').get();
+    usersMap = {};
+    usersSnapshot.forEach(doc => {
+      const userData = doc.data();
+      // Use name as username key, map to email for login
+      if (userData.name && userData.email) {
+        usersMap[userData.name.toLowerCase()] = userData.email;
+      }
+    });
+  } catch (error) {
+    console.error("Error loading users:", error);
+    // Fallback to hardcoded users if Firestore fails
+    usersMap = {
+      "ahmed": "ahmed@safatrans.com",
+      "hesham": "hesham@safatrans.com",
+      "omar": "omar@safatrans.com",
+      "sabry": "sabry@safatrans.com"
+    };
+  }
+}
+
+async function login() {
+  await loadUsers(); // Ensure users are loaded
+  
   const username = document.getElementById("username").value.trim().toLowerCase();
   const password = document.getElementById("password").value;
   const email = usersMap[username];
@@ -172,6 +195,16 @@ function login() {
     .catch(() => {
       alert("كلمة السر غير صحيحة");
     });
+}
+
+// Load users when page loads
+window.addEventListener('DOMContentLoaded', loadUsers);
+
+// Handle Enter key press for login
+function handleKeyPress(event) {
+  if (event.key === 'Enter') {
+    login();
+  }
 }
 </script>
 

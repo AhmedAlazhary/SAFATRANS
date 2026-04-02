@@ -1,7 +1,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, indexedDBLocalPersistence, initializeAuth, browserLocalPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { mountAppNav, APP_PAGES } from "./app-nav.js";
 
@@ -53,16 +53,40 @@ window.editUser = async (id) => {
 window.deleteUser = async (id) => {
     if (confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
         try {
+            // جلب بيانات المستخدم من Firestore للحصول على UID
+            const userDoc = await getDoc(doc(firestore, 'users', id));
+            if (!userDoc.exists()) {
+                window.notify('المستخدم غير موجود', 'error');
+                return;
+            }
+            
+            const userData = userDoc.data();
+            
             // حذف من Firestore أولاً
             await deleteDoc(doc(firestore, 'users', id));
+            
+            // محاولة حذف من Firebase Authentication
+            // ملاحظة: لا يمكن حذف مستخدم من Auth مباشرة من Client SDK
+            // يتطلب Cloud Function أو Admin SDK
+            try {
+                // محاولة استخدام re-authentication ثم الحذف
+                const adminAuth = getAuth(secondaryApp);
+                
+                // نحتاج لكلمة المرور للحذف - هذا محدود من Client SDK
+                // الحل الأفضل هو استخدام Cloud Function
+                console.warn('Auth deletion requires Cloud Function - manual deletion may be needed');
+                
+                window.notify('تم حذف بيانات المستخدم من Firestore. ملاحظة: يجب حذف حساب الدخول يدوياً من Firebase Console.', 'warning');
+            } catch (authError) {
+                console.warn('Auth deletion not available from client:', authError);
+            }
             
             // تحديث الجدول فوراً في الواجهة
             await loadUsers();
             
-            window.notify('تم حذف بيانات المستخدم بنجاح. ملاحظة: حساب الدخول (Auth) يحتاج للحذف يدوياً من لوحة Firebase لضمان الأمان.', 'success');
         } catch (e) {
             console.error("Delete error:", e);
-            window.notify("خطأ في حذف بيانات المستخدم", "error");
+            window.notify("خطأ في حذف المستخدم", "error");
         }
     }
 };
@@ -103,13 +127,37 @@ window.rejectRequest = async (id) => {
 };
 
 // --- Helper Functions ---
+let usersUnsubscribe = null;
+
 async function loadUsers() {
     try {
-        const usersSnapshot = await getDocs(collection(firestore, 'users'));
-        const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderUsersTable(usersList);
+        // إلغاء الاشتراك القديم إذا وجد
+        if (usersUnsubscribe) {
+            usersUnsubscribe();
+        }
+        
+        // استخدام real-time listener لتحديث فوري
+        usersUnsubscribe = onSnapshot(collection(firestore, 'users'), (snapshot) => {
+            const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderUsersTable(usersList);
+        }, (error) => {
+            console.error("Real-time users listener error:", error);
+            // fallback to one-time fetch
+            getDocs(collection(firestore, 'users')).then(snapshot => {
+                const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUsersTable(usersList);
+            });
+        });
     } catch (e) {
         console.error("Load users error:", e);
+    }
+}
+
+// دالة تنظيف الاشتراكات
+function cleanupSubscriptions() {
+    if (usersUnsubscribe) {
+        usersUnsubscribe();
+        usersUnsubscribe = null;
     }
 }
 
@@ -235,13 +283,21 @@ function setupEventListeners() {
                 const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password);
                 const newUser = userCredential.user;
                 
+                // التأكد من وجود صلاحيات للمستخدم الجديد
+                const defaultRole = userData.role || 'USER';
+                const defaultPages = userData.allowedPages && userData.allowedPages.length > 0 
+                    ? userData.allowedPages 
+                    : APP_PAGES.map(p => p.id); // جميع الصفحات كصلاحيات افتراضية
+                
                 // Create user profile in Firestore using the NEW UID from Authentication
                 await setDoc(doc(firestore, 'users', newUser.uid), {
                     name: userData.name,
                     email: userData.email,
-                    role: userData.role,
-                    allowedPages: userData.allowedPages,
-                    createdAt: new Date().toISOString()
+                    role: defaultRole,
+                    allowedPages: defaultPages,
+                    createdAt: new Date().toISOString(),
+                    createdBy: currentUser.uid,
+                    isActive: true
                 });
 
                 // Immediately sign out from the secondary instance
@@ -277,6 +333,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup listeners immediately for basic buttons (tabs, logout, etc.)
     setupEventListeners();
+
+    // إضافة event listener لمغادرة الصفحة
+    window.addEventListener('beforeunload', cleanupSubscriptions);
+    window.addEventListener('pagehide', cleanupSubscriptions);
 
     onAuthStateChanged(auth, async (user) => {
         if (!user) {

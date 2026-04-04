@@ -488,7 +488,40 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Main App JS -->
-    <script src="js/garage-app.js"></script>
+    <!-- Excel Export Library -->
+    <script src="js/excel-exporter.js"></script>
+    
+    <!-- Firebase Config -->
+    <script>
+        // Check if running inside iframe (dashboard integration)
+        if (window.self !== window.top) {
+            // Running inside dashboard - use parent's Firebase
+            console.log('🚀 Garage Management running inside dashboard');
+            
+            // Wait for parent Firebase to be available
+            const checkParentFirebase = setInterval(() => {
+                if (window.parent.firebase && window.parent.db) {
+                    clearInterval(checkParentFirebase);
+                    window.firebase = window.parent.firebase;
+                    window.db = window.parent.db;
+                    window.auth = window.parent.auth;
+                    window.currentUser = window.parent.currentUser;
+                    
+                    // Load the main app
+                    const script = document.createElement('script');
+                    script.src = 'js/garage-app.js';
+                    document.head.appendChild(script);
+                }
+            }, 100);
+        } else {
+            // Running standalone - use own Firebase
+            console.log('🚀 Garage Management running standalone');
+            
+            // Load main app script
+            const script = document.createElement('script');
+            script.src = 'js/garage-app.js';
+            document.head.appendChild(script);
+        }
+    </script>
 </body>
 </html>

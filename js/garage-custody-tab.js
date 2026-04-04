@@ -193,12 +193,13 @@ async function loadGarageCustody() {
                                 <th>المستلم</th>
                                 <th>السبب</th>
                                 <th>ملاحظات</th>
-                                <th>إجراءات</th>
+                                <th>حذف</th>
+                                <th>تعديل</th>
                             </tr>
                         </thead>
                         <tbody id="custodyTable">
                             <tr>
-                                <td colspan="8" class="text-center text-muted">جاري تحميل البيانات...</td>
+                                <td colspan="9" class="text-center text-muted">جاري تحميل البيانات...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -355,7 +356,7 @@ function updateCustodyTable(transactions) {
     const tbody = document.getElementById('custodyTable');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">لا توجد حركات مسجلة</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">لا توجد حركات مسجلة</td></tr>';
         return;
     }
     
@@ -375,6 +376,11 @@ function updateCustodyTable(transactions) {
             <td>
                 <button class="btn btn-sm btn-danger" onclick="deleteCustodyTransaction('${transaction.id}')">
                     <i class="bi bi-trash"></i>
+                </button>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="editCustodyTransaction('${transaction.id}')">
+                    <i class="bi bi-pencil"></i>
                 </button>
             </td>
         </tr>
@@ -416,6 +422,127 @@ async function deleteCustodyTransaction(transactionId) {
     } catch (error) {
         console.error('Error deleting custody transaction:', error);
         showNotification('خطأ في حذف الحركة', 'danger');
+    }
+}
+
+function editCustodyTransaction(transactionId) {
+    // Create edit modal
+    const modalHtml = `
+        <div class="modal fade" id="editCustodyModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">تعديل حركة العهدة</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editCustodyForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">التاريخ</label>
+                                    <input type="date" class="form-control" id="editCustodyDate" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">القيمة</label>
+                                    <input type="number" class="form-control" id="editCustodyAmount" step="0.01" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">المستلم</label>
+                                    <select class="form-select" id="editCustodyRecipient" required>
+                                        <option value="">اختر المستلم</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">السبب</label>
+                                    <input type="text" class="form-control" id="editCustodyReason" required>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">ملاحظات</label>
+                                    <textarea class="form-control" id="editCustodyNotes" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEditedCustody('${transactionId}')">حفظ التعديلات</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Load transaction data and populate form
+    loadCustodyData(transactionId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('editCustodyModal'));
+    modal.show();
+    
+    // Remove modal when hidden
+    document.getElementById('editCustodyModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+async function loadCustodyData(transactionId) {
+    try {
+        const transactionDoc = await db.collection('garageCustody').doc(transactionId).get();
+        const transaction = transactionDoc.data();
+        
+        // Populate form with current data
+        document.getElementById('editCustodyDate').value = transaction.date.toDate ? transaction.date.toDate().toISOString().split('T')[0] : new Date(transaction.date).toISOString().split('T')[0];
+        document.getElementById('editCustodyAmount').value = transaction.amount;
+        document.getElementById('editCustodyReason').value = transaction.reason;
+        document.getElementById('editCustodyNotes').value = transaction.notes || '';
+        
+        // Populate recipients dropdown
+        const recipientsSelect = document.getElementById('editCustodyRecipient');
+        recipientsSelect.innerHTML = '<option value="">اختر المستلم</option>';
+        [...masterData.workers, ...masterData.drivers].forEach(person => {
+            const selected = person === transaction.recipient ? 'selected' : '';
+            recipientsSelect.innerHTML += `<option value="${person}" ${selected}>${person}</option>`;
+        });
+        
+        // Store transaction data globally for save function
+        window.currentCustodyTransaction = transaction;
+        
+    } catch (error) {
+        console.error('Error loading custody data:', error);
+        showNotification('خطأ في تحميل بيانات الحركة', 'danger');
+    }
+}
+
+async function saveEditedCustody(transactionId) {
+    try {
+        const originalTransaction = window.currentCustodyTransaction;
+        const newAmount = parseFloat(document.getElementById('editCustodyAmount').value);
+        const newRecipient = document.getElementById('editCustodyRecipient').value;
+        const newReason = document.getElementById('editCustodyReason').value;
+        const newNotes = document.getElementById('editCustodyNotes').value;
+        const newDate = new Date(document.getElementById('editCustodyDate').value);
+        
+        // Update transaction document
+        await db.collection('garageCustody').doc(transactionId).update({
+            date: newDate,
+            amount: newAmount,
+            recipient: newRecipient,
+            reason: newReason,
+            notes: newNotes,
+            updatedBy: currentUser.email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Close modal and refresh
+        bootstrap.Modal.getInstance(document.getElementById('editCustodyModal')).hide();
+        showNotification('تم تعديل الحركة بنجاح', 'success');
+        await loadCustodyTable();
+        await calculateCustodySummary();
+        
+    } catch (error) {
+        console.error('Error saving edited custody:', error);
+        showNotification('خطأ في حفظ التعديلات', 'danger');
     }
 }
 

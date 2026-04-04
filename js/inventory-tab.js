@@ -193,12 +193,13 @@ async function loadInventoryTab() {
                                 <th>المورد/السيارة</th>
                                 <th>سبب الصرف</th>
                                 <th>ملاحظات</th>
-                                <th>إجراءات</th>
+                                <th>حذف</th>
+                                <th>تعديل</th>
                             </tr>
                         </thead>
                         <tbody id="movementsTable">
                             <tr>
-                                <td colspan="11" class="text-center text-muted">جاري تحميل البيانات...</td>
+                                <td colspan="12" class="text-center text-muted">جاري تحميل البيانات...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -421,7 +422,7 @@ function updateMovementsTable(movements) {
     const tbody = document.getElementById('movementsTable');
     
     if (movements.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">لا توجد حركات مسجلة</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">لا توجد حركات مسجلة</td></tr>';
         return;
     }
     
@@ -444,6 +445,11 @@ function updateMovementsTable(movements) {
             <td>
                 <button class="btn btn-sm btn-danger" onclick="deleteMovement('${movement.id}')">
                     <i class="bi bi-trash"></i>
+                </button>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="editMovement('${movement.id}')">
+                    <i class="bi bi-pencil"></i>
                 </button>
             </td>
         </tr>
@@ -471,6 +477,134 @@ async function deleteMovement(movementId) {
     } catch (error) {
         console.error('Error deleting movement:', error);
         showNotification('خطأ في حذف الحركة', 'danger');
+    }
+}
+
+function editMovement(movementId) {
+    // Create edit modal
+    const modalHtml = `
+        <div class="modal fade" id="editMovementModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">تعديل الحركة</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editMovementForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">التاريخ</label>
+                                    <input type="date" class="form-control" id="editDate" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">الكمية</label>
+                                    <input type="number" class="form-control" id="editQuantity" min="1" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">السعر</label>
+                                    <input type="number" class="form-control" id="editPrice" step="0.01">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">ملاحظات</label>
+                                    <textarea class="form-control" id="editNotes" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEditedMovement('${movementId}')">حفظ التعديلات</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Load movement data and populate form
+    loadMovementData(movementId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('editMovementModal'));
+    modal.show();
+    
+    // Remove modal when hidden
+    document.getElementById('editMovementModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+async function loadMovementData(movementId) {
+    try {
+        const movementDoc = await db.collection('inventoryMovements').doc(movementId).get();
+        const movement = movementDoc.data();
+        
+        // Populate form with current data
+        document.getElementById('editDate').value = movement.date.toDate ? movement.date.toDate().toISOString().split('T')[0] : new Date(movement.date).toISOString().split('T')[0];
+        document.getElementById('editQuantity').value = movement.quantity;
+        document.getElementById('editPrice').value = movement.price || '';
+        document.getElementById('editNotes').value = movement.notes || '';
+        
+        // Store movement data globally for save function
+        window.currentMovement = movement;
+        
+    } catch (error) {
+        console.error('Error loading movement data:', error);
+        showNotification('خطأ في تحميل بيانات الحركة', 'danger');
+    }
+}
+
+async function saveEditedMovement(movementId) {
+    try {
+        const originalMovement = window.currentMovement;
+        const newQuantity = parseInt(document.getElementById('editQuantity').value);
+        const newPrice = parseFloat(document.getElementById('editPrice').value) || 0;
+        const newNotes = document.getElementById('editNotes').value;
+        const newDate = new Date(document.getElementById('editDate').value);
+        
+        // Calculate stock balance difference
+        const quantityDifference = newQuantity - originalMovement.quantity;
+        
+        // Update stock balance
+        if (quantityDifference !== 0) {
+            if (originalMovement.type === 'purchase') {
+                await updateStockBalance(originalMovement.itemName, quantityDifference, 'add');
+            } else {
+                // Check if enough stock for increased quantity
+                if (quantityDifference > 0) {
+                    const stockDoc = await db.collection('stockBalances').doc(originalMovement.itemName).get();
+                    if (stockDoc.exists) {
+                        const currentBalance = stockDoc.data().balance || 0;
+                        if (currentBalance < quantityDifference) {
+                            showNotification('الرصيد المتاح غير كافي لهذه الزيادة', 'warning');
+                            return;
+                        }
+                    }
+                }
+                await updateStockBalance(originalMovement.itemName, Math.abs(quantityDifference), 'subtract');
+            }
+        }
+        
+        // Update movement document
+        await db.collection('inventoryMovements').doc(movementId).update({
+            date: newDate,
+            quantity: newQuantity,
+            price: newPrice,
+            totalValue: newQuantity * newPrice,
+            notes: newNotes,
+            updatedBy: currentUser.email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Close modal and refresh
+        bootstrap.Modal.getInstance(document.getElementById('editMovementModal')).hide();
+        showNotification('تم تعديل الحركة بنجاح', 'success');
+        await loadMovementsTable();
+        
+    } catch (error) {
+        console.error('Error saving edited movement:', error);
+        showNotification('خطأ في حفظ التعديلات', 'danger');
     }
 }
 

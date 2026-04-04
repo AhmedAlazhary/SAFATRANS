@@ -9,13 +9,14 @@ const firebaseConfig = {
     appId: "1:177091434445:web:568b6ae3ba270a21d4d684"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+// Initialize Firebase (only if not already initialized)
+if (!window.firebase) {
+    firebase.initializeApp(firebaseConfig);
+}
 
-// Global Variables
-let currentUser = null;
+const db = window.db || firebase.firestore();
+const auth = window.auth || firebase.auth();
+const currentUser = window.currentUser || null;
 let masterData = {
     workers: [],
     items: [],
@@ -26,22 +27,65 @@ let masterData = {
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
+    // Check if running inside iframe
+    if (window.self !== window.top) {
+        // Running inside dashboard - skip authentication, use parent's user
+        console.log('🚀 Garage App initializing inside dashboard');
+        if (window.parent.currentUser) {
+            currentUser = window.parent.currentUser;
+            initializeApp();
+        } else {
+            // Wait for parent user to be available
+            const checkUser = setInterval(() => {
+                if (window.parent.currentUser) {
+                    currentUser = window.parent.currentUser;
+                    clearInterval(checkUser);
+                    initializeApp();
+                }
+            }, 100);
+        }
+    } else {
+        // Running standalone - use own authentication
+        console.log('🚀 Garage App initializing standalone');
+        initializeApp();
+    }
 });
 
 async function initializeApp() {
-    // Check authentication
-    auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            currentUser = user;
+    // Check if running inside iframe
+    if (window.self !== window.top) {
+        // Running inside dashboard - use parent's authentication
+        if (currentUser) {
+            console.log('🚀 User authenticated via dashboard:', currentUser.email);
             await loadMasterData();
             setupEventListeners();
             loadDashboardData();
         } else {
-            // Redirect to login or show login modal
-            showLoginModal();
+            // Wait for authentication
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    currentUser = user;
+                    await loadMasterData();
+                    setupEventListeners();
+                    loadDashboardData();
+                } else {
+                    showLoginModal();
+                }
+            });
         }
-    });
+    } else {
+        // Running standalone - use own authentication
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                await loadMasterData();
+                setupEventListeners();
+                loadDashboardData();
+            } else {
+                showLoginModal();
+            }
+        });
+    }
 }
 
 // Authentication
@@ -168,40 +212,65 @@ function updateMasterDataUI() {
     // Update workers list
     const workersList = document.getElementById('workersList');
     if (workersList) {
-        workersList.innerHTML = masterData.workers.map(worker => 
-            `<div class="badge bg-primary m-1 p-2">${worker}</div>`
+        workersList.innerHTML = masterData.workers.map((worker, index) => 
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary p-2">${worker}</span>
+                <button class="btn btn-sm btn-danger" onclick="deleteMasterData('workers', ${index})" title="حذف">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`
         ).join('');
     }
     
     // Update items list
     const itemsList = document.getElementById('itemsList');
     if (itemsList) {
-        itemsList.innerHTML = masterData.items.map(item => 
-            `<div class="badge bg-success m-1 p-2">${item}</div>`
+        itemsList.innerHTML = masterData.items.map((item, index) => 
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-success p-2">${item}</span>
+                <button class="btn btn-sm btn-danger" onclick="deleteMasterData('items', ${index})" title="حذف">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`
         ).join('');
     }
     
     // Update suppliers list
     const suppliersList = document.getElementById('suppliersList');
     if (suppliersList) {
-        suppliersList.innerHTML = masterData.suppliers.map(supplier => 
-            `<div class="badge bg-info m-1 p-2">${supplier}</div>`
+        suppliersList.innerHTML = masterData.suppliers.map((supplier, index) => 
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-info p-2">${supplier}</span>
+                <button class="btn btn-sm btn-danger" onclick="deleteMasterData('suppliers', ${index})" title="حذف">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`
         ).join('');
     }
     
     // Update cars list
     const carsList = document.getElementById('carsList');
     if (carsList) {
-        carsList.innerHTML = masterData.cars.map(car => 
-            `<div class="badge bg-warning m-1 p-2">${car}</div>`
+        carsList.innerHTML = masterData.cars.map((car, index) => 
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-warning p-2">${car}</span>
+                <button class="btn btn-sm btn-danger" onclick="deleteMasterData('cars', ${index})" title="حذف">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`
         ).join('');
     }
     
     // Update drivers list
     const driversList = document.getElementById('driversList');
     if (driversList) {
-        driversList.innerHTML = masterData.drivers.map(driver => 
-            `<div class="badge bg-secondary m-1 p-2">${driver}</div>`
+        driversList.innerHTML = masterData.drivers.map((driver, index) => 
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-secondary p-2">${driver}</span>
+                <button class="btn btn-sm btn-danger" onclick="deleteMasterData('drivers', ${index})" title="حذف">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`
         ).join('');
     }
 }
@@ -259,6 +328,113 @@ function addDriver() {
         updateMasterDataUI();
         saveMasterData();
         showNotification('تم إضافة السائق بنجاح', 'success');
+    }
+}
+
+// Delete Master Data Functions
+async function deleteMasterData(category, index) {
+    const itemName = masterData[category][index];
+    
+    if (!confirm(`هل أنت متأكد من حذف "${itemName}"؟`)) {
+        return;
+    }
+    
+    try {
+        // Check if item is used in any transactions
+        const isUsed = await checkItemUsage(category, itemName);
+        
+        if (isUsed) {
+            showNotification(`لا يمكن حذف "${itemName}" لأنه مستخدم في معاملات سابقة`, 'warning');
+            return;
+        }
+        
+        // Remove from local array
+        masterData[category].splice(index, 1);
+        
+        // Update UI and save
+        updateMasterDataUI();
+        await saveMasterData();
+        
+        showNotification(`تم حذف "${itemName}" بنجاح`, 'success');
+        
+    } catch (error) {
+        console.error('Error deleting master data:', error);
+        showNotification('خطأ في حذف البيانات', 'danger');
+    }
+}
+
+// Check if item is used in any transactions
+async function checkItemUsage(category, itemName) {
+    try {
+        let query;
+        
+        switch (category) {
+            case 'items':
+                // Check in inventory movements and stock balances
+                const inventoryCheck = await db.collection('inventoryMovements')
+                    .where('itemName', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                const stockCheck = await db.collection('stockBalances')
+                    .where('itemName', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                return !inventoryCheck.empty || !stockCheck.empty;
+                
+            case 'workers':
+                // Check in payroll and custody transactions
+                const payrollCheck = await db.collection('salaries')
+                    .where('workerName', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                const custodyCheck = await db.collection('garageCustody')
+                    .where('recipient', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                const loansCheck = await db.collection('hajLoans')
+                    .where('workerName', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                return !payrollCheck.empty || !custodyCheck.empty || !loansCheck.empty;
+                
+            case 'suppliers':
+                // Check in inventory movements
+                const supplierCheck = await db.collection('inventoryMovements')
+                    .where('supplier', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                return !supplierCheck.empty;
+                
+            case 'cars':
+                // Check in inventory movements
+                const carCheck = await db.collection('inventoryMovements')
+                    .where('carNumber', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                return !carCheck.empty;
+                
+            case 'drivers':
+                // Check in custody transactions
+                const driverCheck = await db.collection('garageCustody')
+                    .where('recipient', '==', itemName)
+                    .limit(1)
+                    .get();
+                
+                return !driverCheck.empty;
+                
+            default:
+                return false;
+        }
+    } catch (error) {
+        console.error('Error checking item usage:', error);
+        return false;
     }
 }
 
@@ -354,6 +530,14 @@ function getCurrentDate() {
 }
 
 function showNotification(message, type = 'info') {
+    // Check if running inside iframe and parent has notification system
+    if (window.self !== window.top && window.parent.showNotification) {
+        // Use parent's notification system
+        window.parent.showNotification(message, type);
+        return;
+    }
+    
+    // Use own notification system
     const alertHtml = `
         <div class="alert alert-${type} alert-dismissible fade show" role="alert">
             ${message}
@@ -366,11 +550,16 @@ function showNotification(message, type = 'info') {
     
     // Add new alert at the top of content area
     const contentArea = document.querySelector('.content-area');
-    contentArea.insertAdjacentHTML('afterbegin', alertHtml);
+    if (contentArea) {
+        contentArea.insertAdjacentHTML('afterbegin', alertHtml);
+    } else {
+        // Fallback for standalone mode
+        document.body.insertAdjacentHTML('afterbegin', alertHtml);
+    }
     
     // Auto-remove after 5 seconds
     setTimeout(() => {
-        const alert = contentArea.querySelector('.alert');
+        const alert = document.querySelector('.alert');
         if (alert) {
             const bsAlert = new bootstrap.Alert(alert);
             bsAlert.close();

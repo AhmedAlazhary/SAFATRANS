@@ -375,12 +375,26 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./js/firebase-config.js";
 import { mountAppNav } from "./js/app-nav.js";
+// import optimization systems
+import "./js/firebase-performance-optimizer.js";
+import "./js/realtime-optimizer.js";
+import "./js/comprehensive-firebase-optimizer.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestore = getFirestore(app);
 
+// تهيئة النظام المحسن
 mountAppNav("#global-app-nav", "dashboard");
+
+// انتظر حتى يتم تحميل أنظمة التحسين
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.comprehensiveFirebaseOptimizer) {
+    console.log('🚀 Firebase Optimizer initialized for dashboard');
+  } else {
+    console.warn('⚠️ Firebase Optimizer not loaded, using fallback methods');
+  }
+});
 
 const activityList = document.getElementById("activityList");
 const inventoryCount = document.getElementById("inventoryCount");
@@ -415,43 +429,69 @@ onAuthStateChanged(auth, async user => {
     return;
   }
 
-  // استخدام النظام الشامل للتحسينات
+  // استخدام النظام الشامل للتحسينات مع fallback
   try {
-    // تحسين جلب بيانات المستخدم مع الكاش
-    const userData = await comprehensiveFirebaseOptimizer.optimizedQuery(
-      collection(firestore, "users"),
-      user.uid,
-      {
-        fields: ['name', 'email', 'job_title', 'permissions', 'isActive'],
-        useCache: true,
-        ttl: 5 * 60 * 1000 // 5 دقائق للكاش
-      }
-    );
-    
-    if (userData) {
-      state.role = userData.role || 'USER';
-      state.permissions = userData.permissions || {};
-      state.userProfile = userData;
-    } else {
-      // Fallback to Staff collection مع تحسين
-      const staffData = await comprehensiveFirebaseOptimizer.optimizedQuery(
-        collection(firestore, "Staff"),
+    // تحقق من وجود النظام المحسن
+    if (window.comprehensiveFirebaseOptimizer) {
+      // تحسين جلب بيانات المستخدم مع الكاش
+      const userData = await comprehensiveFirebaseOptimizer.optimizedQuery(
+        collection(firestore, "users"),
         user.uid,
         {
-          fields: ['name', 'email', 'role'],
+          fields: ['name', 'email', 'job_title', 'permissions', 'isActive'],
           useCache: true,
-          ttl: 10 * 60 * 1000 // 10 دقائق للبيانات الثابتة
+          ttl: 5 * 60 * 1000 // 5 دقائق للكاش
         }
       );
       
-      if (staffData) {
-        state.role = staffData.role || 'viewer';
-        state.permissions = getDefaultPermissions(staffData.role);
-        state.userProfile = staffData;
+      if (userData) {
+        state.role = userData.role || 'USER';
+        state.permissions = userData.permissions || {};
+        state.userProfile = userData;
       } else {
-        state.role = 'USER';
-        state.permissions = getDefaultPermissions('USER');
-        state.userProfile = {};
+        // Fallback to Staff collection مع تحسين
+        const staffData = await comprehensiveFirebaseOptimizer.optimizedQuery(
+          collection(firestore, "Staff"),
+          user.uid,
+          {
+            fields: ['name', 'email', 'role'],
+            useCache: true,
+            ttl: 10 * 60 * 1000 // 10 دقائق للبيانات الثابتة
+          }
+        );
+        
+        if (staffData) {
+          state.role = staffData.role || 'viewer';
+          state.permissions = getDefaultPermissions(staffData.role);
+          state.userProfile = staffData;
+        } else {
+          state.role = 'USER';
+          state.permissions = getDefaultPermissions('USER');
+          state.userProfile = {};
+        }
+      }
+    } else {
+      // Fallback method بدون تحسينات
+      console.warn('⚠️ Using fallback method - optimizer not available');
+      const userDoc = await getDoc(doc(firestore, "users", user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        state.role = userData.role || 'USER';
+        state.permissions = userData.permissions || {};
+        state.userProfile = userData;
+      } else {
+        // Fallback to Staff collection
+        const staffDoc = await getDoc(doc(firestore, "Staff", user.uid));
+        if (staffDoc.exists()) {
+          const staffData = staffDoc.data();
+          state.role = staffData.role || 'viewer';
+          state.permissions = getDefaultPermissions(staffData.role);
+          state.userProfile = staffData;
+        } else {
+          state.role = 'USER';
+          state.permissions = getDefaultPermissions('USER');
+          state.userProfile = {};
+        }
       }
     }
   } catch (error) {
@@ -587,58 +627,69 @@ function startRealtimeListeners() {
 }
 
 function renderSummary() {
-  // استخدام النظام الشامل للتحسينات
-  pageOptimizers.optimizeDashboard().then(({ users, stats }) => {
-    // تحديث إحصائيات المستخدمين
-    inventoryCount.textContent = String(users?.length || 0);
-    openJobsCount.textContent = String(stats?.openJobs || 0);
-    
-    // تحميل بيانات المصروفات اليومية محسنة
-    comprehensiveFirebaseOptimizer.optimizedQuery(
-      collection(firestore, 'expenses'),
-      null,
-      {
-        where: [['date', '==', new Date().toISOString().split('T')[0]]],
-        fields: ['amount'],
-        useCache: true,
-        ttl: 2 * 60 * 1000 // دقيقتين للمصروفات اليومية
-      }
-    ).then(expenses => {
-      const totalExpenses = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-      todayExpenses.textContent = String(totalExpenses);
+  // استخدام النظام الشامل للتحسينات مع fallback
+  if (window.comprehensiveFirebaseOptimizer && window.pageOptimizers) {
+    pageOptimizers.optimizeDashboard().then(({ users, stats }) => {
+      // تحديث إحصائيات المستخدمين
+      inventoryCount.textContent = String(users?.length || 0);
+      openJobsCount.textContent = String(stats?.openJobs || 0);
+      
+      // تحميل بيانات المصروفات اليومية محسنة
+      comprehensiveFirebaseOptimizer.optimizedQuery(
+        collection(firestore, 'expenses'),
+        null,
+        {
+          where: [['date', '==', new Date().toISOString().split('T')[0]]],
+          fields: ['amount'],
+          useCache: true,
+          ttl: 2 * 60 * 1000 // دقيقتين للمصروفات اليومية
+        }
+      ).then(expenses => {
+        const totalExpenses = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+        todayExpenses.textContent = String(totalExpenses);
+      }).catch(error => {
+        console.error('Error loading expenses:', error);
+        todayExpenses.textContent = '0';
+      });
+      
+      // تحميل بيانات المخزون المنخفض محسنة
+      comprehensiveFirebaseOptimizer.optimizedQuery(
+        collection(firestore, 'inventory'),
+        null,
+        {
+          where: [['availableQty', '<=', 'reorderLevel']],
+          fields: ['availableQty', 'reorderLevel'],
+          useCache: true,
+          ttl: 5 * 60 * 1000 // 5 دقائق للمخزون
+        }
+      ).then(inventory => {
+        lowStockCount.textContent = String(inventory?.length || 0);
+      }).catch(error => {
+        console.error('Error loading inventory:', error);
+        lowStockCount.textContent = '0';
+      });
     }).catch(error => {
-      console.error('Error loading expenses:', error);
-      todayExpenses.textContent = '0';
+      console.error('Dashboard optimization error:', error);
+      // Fallback to old method
+      renderSummaryFallback();
     });
-    
-    // تحميل بيانات المخزون المنخفض محسنة
-    comprehensiveFirebaseOptimizer.optimizedQuery(
-      collection(firestore, 'inventory'),
-      null,
-      {
-        where: [['availableQty', '<=', 'reorderLevel']],
-        fields: ['availableQty', 'reorderLevel'],
-        useCache: true,
-        ttl: 5 * 60 * 1000 // 5 دقائق للمخزون
-      }
-    ).then(inventory => {
-      lowStockCount.textContent = String(inventory?.length || 0);
-    }).catch(error => {
-      console.error('Error loading inventory:', error);
-      lowStockCount.textContent = '0';
-    });
-  }).catch(error => {
-    console.error('Dashboard optimization error:', error);
-    // Fallback to old method
-    inventoryCount.textContent = String(state.inventory.length);
-    openJobsCount.textContent = String(state.jobs.filter(job => (job.status || "open") !== "closed").length);
-    todayExpenses.textContent = String(
-      state.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
-    );
-    lowStockCount.textContent = String(
-      state.inventory.filter(item => Number(item.availableQty || 0) <= Number(item.reorderLevel || 0)).length
-    );
-  });
+  } else {
+    // Fallback method بدون تحسينات
+    console.warn('⚠️ Using fallback renderSummary - optimizer not available');
+    renderSummaryFallback();
+  }
+}
+
+// Fallback method لـ renderSummary
+function renderSummaryFallback() {
+  inventoryCount.textContent = String(state.inventory.length);
+  openJobsCount.textContent = String(state.jobs.filter(job => (job.status || "open") !== "closed").length);
+  todayExpenses.textContent = String(
+    state.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
+  );
+  lowStockCount.textContent = String(
+    state.inventory.filter(item => Number(item.availableQty || 0) <= Number(item.reorderLevel || 0)).length
+  );
 }
 
 function renderActivity() {

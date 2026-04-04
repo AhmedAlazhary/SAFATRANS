@@ -786,6 +786,10 @@ tr:last-child td {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<!-- optimization systems -->
+<script src="js/firebase-performance-optimizer.js"></script>
+<script src="js/realtime-optimizer.js"></script>
+<script src="js/comprehensive-firebase-optimizer.js"></script>
 
 <script>
 const firebaseConfig = {
@@ -804,6 +808,15 @@ const db = firebase.database();
 const today = new Date().toISOString().split("T")[0];
 const LOCK_DURATION_MS = 20000;
 const LOCK_RENEW_MS = 8000;
+
+// تهيئة النظام المحسن
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.comprehensiveFirebaseOptimizer) {
+    console.log('🚀 Firebase Optimizer initialized for daily page');
+  } else {
+    console.warn('⚠️ Firebase Optimizer not loaded, using fallback methods');
+  }
+});
 
 const datePicker = document.getElementById("datePicker");
 const currentTableBody = document.getElementById("currentTableBody");
@@ -1846,29 +1859,54 @@ function loadAllData() {
     window.dailyDataListener.stop();
   }
   
-  window.dailyDataListener = realtimeOptimizer.createSmartPolling(
-    db.ref("daily"),
-    {
-      callback: (snap) => {
-        const serverData = normalizeSnapshotData(snap.val());
-        const editingInfo = getActiveEditingInfo();
-        
-        // دمج البيانات مع البيانات المحلية المحفوظة
-        Object.keys(serverData).forEach(date => {
-          if (!dirtyDates[date]) {
-            dailyData[date] = serverData[date] || { rows: [] };
-          }
-        });
-        
-        // تحديث الواجهة مع pagination
-        renderAll();
-        updateDailyTripsTotal(currentDate);
-        renderPaginationControls();
-      },
-      pollingInterval: 15000, // 15 ثانية فقط
-      useCache: true
-    }
-  );
+  // التحقق من وجود النظام المحسن
+  if (window.realtimeOptimizer) {
+    console.log('🚀 Using optimized smart polling for daily data');
+    
+    window.dailyDataListener = realtimeOptimizer.createSmartPolling(
+      db.ref("daily"),
+      {
+        callback: (snap) => {
+          const serverData = normalizeSnapshotData(snap.val());
+          const editingInfo = getActiveEditingInfo();
+          
+          // دمج البيانات مع البيانات المحلية المحفوظة
+          Object.keys(serverData).forEach(date => {
+            if (!dirtyDates[date]) {
+              dailyData[date] = serverData[date] || { rows: [] };
+            }
+          });
+          
+          // تحديث الواجهة مع pagination
+          renderAll();
+          updateDailyTripsTotal(currentDate);
+          renderPaginationControls();
+        },
+        pollingInterval: 15000, // 15 ثانية فقط
+        useCache: true
+      }
+    );
+  } else {
+    // Fallback method بدون تحسينات
+    console.warn('⚠️ Using fallback onSnapshot - optimizer not available');
+    
+    window.dailyDataListener = db.ref("daily").on("value", snap => {
+      const serverData = normalizeSnapshotData(snap.val());
+      const editingInfo = getActiveEditingInfo();
+      
+      // دمج البيانات مع البيانات المحلية المحفوظة
+      Object.keys(serverData).forEach(date => {
+        if (!dirtyDates[date]) {
+          dailyData[date] = serverData[date] || { rows: [] };
+        }
+      });
+      
+      // تحديث الواجهة
+      renderAll();
+      updateDailyTripsTotal(currentDate);
+      renderPaginationControls();
+    });
+  }
 }
 
 // دالة عرض أزرار pagination للبيانات اليومية

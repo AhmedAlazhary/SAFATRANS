@@ -270,12 +270,25 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./js/firebase-config.js";
 import { mountAppNav } from "./js/app-nav.js";
+// import optimization systems
+import "./js/firebase-performance-optimizer.js";
+import "./js/realtime-optimizer.js";
+import "./js/comprehensive-firebase-optimizer.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 mountAppNav("#global-app-nav", "accounting");
+
+// تهيئة النظام المحسن
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.comprehensiveFirebaseOptimizer) {
+    console.log('🚀 Firebase Optimizer initialized for accounting page');
+  } else {
+    console.warn('⚠️ Firebase Optimizer not loaded, using fallback methods');
+  }
+});
 
 const TYPE_LABELS = {
   asset: "أصول",
@@ -573,58 +586,94 @@ let totalEntries = 0;
 
 // تحسين تحميل الحسابات باستخدام النظام الشامل
 function loadAccountsOptimized() {
-  // استخدام smart polling بدلاً من real-time listener
-  if (window.accountsListener) {
-    window.accountsListener.stop();
-  }
-  
-  window.accountsListener = realtimeOptimizer.createSmartPolling(
-    collection(db, "AccountingAccounts"),
-    {
-      callback: (snap) => {
-        accountsMap = new Map();
-        snap.forEach(docSnap => {
-          accountsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-        });
-        rebuildLedgerAndTrial();
-        comprehensiveFirebaseOptimizer.logPerformance('Accounts loaded', accountsMap.size);
-      },
-      pollingInterval: 60000, // دقيقة واحدة للحسابات (بيانات ثابتة نسبياً)
-      useCache: true,
-      ttl: 10 * 60 * 1000 // 10 دقائق للكاش
+  // التحقق من وجود النظام المحسن
+  if (window.realtimeOptimizer) {
+    console.log('🚀 Using optimized smart polling for accounts');
+    
+    // استخدام smart polling بدلاً من real-time listener
+    if (window.accountsListener) {
+      window.accountsListener.stop();
     }
-  );
+    
+    window.accountsListener = realtimeOptimizer.createSmartPolling(
+      collection(db, "AccountingAccounts"),
+      {
+        callback: (snap) => {
+          accountsMap = new Map();
+          snap.forEach(docSnap => {
+            accountsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+          });
+          rebuildLedgerAndTrial();
+          if (window.comprehensiveFirebaseOptimizer) {
+            comprehensiveFirebaseOptimizer.logPerformance('Accounts loaded', accountsMap.size);
+          }
+        },
+        pollingInterval: 60000, // دقيقة واحدة للحسابات (بيانات ثابتة نسبياً)
+        useCache: true,
+        ttl: 10 * 60 * 1000 // 10 دقائق للكاش
+      }
+    );
+  } else {
+    // Fallback method بدون تحسينات
+    console.warn('⚠️ Using fallback onSnapshot for accounts - optimizer not available');
+    
+    onSnapshot(collection(db, "AccountingAccounts"), snap => {
+      accountsMap = new Map();
+      snap.forEach(docSnap => {
+        accountsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+      });
+      rebuildLedgerAndTrial();
+    });
+  }
 }
 
 // تحسين تحميل القيود المحاسبية مع pagination
 function loadJournalEntriesOptimized() {
-  // استخدام smart polling مع pagination
-  if (window.journalListener) {
-    window.journalListener.stop();
-  }
-  
-  window.journalListener = realtimeOptimizer.createSmartPolling(
-    collection(db, "JournalEntries"),
-    {
-      callback: (snap) => {
-        entries = [];
-        snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
-        entries.sort((a, b) => (a.date || "").localeCompare(b.date || "", "ar", { numeric: true }));
-        
-        // تطبيق pagination
-        const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedEntries = entries.slice(startIndex, endIndex);
-        
-        rebuildLedgerAndTrial();
-        renderPaginationControls();
-        comprehensiveFirebaseOptimizer.logPerformance('Journal entries loaded', paginatedEntries.length);
-      },
-      pollingInterval: 30000, // 30 ثانية للقيود
-      useCache: true,
-      ttl: 5 * 60 * 1000 // 5 دقائق للكاش
+  // التحقق من وجود النظام المحسن
+  if (window.realtimeOptimizer) {
+    console.log('🚀 Using optimized smart polling for journal entries');
+    
+    // استخدام smart polling مع pagination
+    if (window.journalListener) {
+      window.journalListener.stop();
     }
-  );
+    
+    window.journalListener = realtimeOptimizer.createSmartPolling(
+      collection(db, "JournalEntries"),
+      {
+        callback: (snap) => {
+          entries = [];
+          snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+          entries.sort((a, b) => (a.date || "").localeCompare(b.date || "", "ar", { numeric: true }));
+          
+          // تطبيق pagination
+          const startIndex = (currentPage - 1) * pageSize;
+          const endIndex = startIndex + pageSize;
+          const paginatedEntries = entries.slice(startIndex, endIndex);
+          
+          rebuildLedgerAndTrial();
+          renderPaginationControls();
+          if (window.comprehensiveFirebaseOptimizer) {
+            comprehensiveFirebaseOptimizer.logPerformance('Journal entries loaded', paginatedEntries.length);
+          }
+        },
+        pollingInterval: 30000, // 30 ثانية للقيود
+        useCache: true,
+        ttl: 5 * 60 * 1000 // 5 دقائق للكاش
+      }
+    );
+  } else {
+    // Fallback method بدون تحسينات
+    console.warn('⚠️ Using fallback onSnapshot for journal entries - optimizer not available');
+    
+    onSnapshot(collection(db, "JournalEntries"), snap => {
+      entries = [];
+      snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+      entries.sort((a, b) => (a.date || "").localeCompare(b.date || "", "ar", { numeric: true }));
+      rebuildLedgerAndTrial();
+      renderPaginationControls();
+    });
+  }
 }
 
 // دالة عرض أزرار pagination للمحاسبة
@@ -808,6 +857,23 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+// تهيية التحسينات عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+  // تحميل البيانات المحسنة
+  loadAccountsOptimized();
+  loadJournalEntriesOptimized();
+  
+  // إضافة حاوية pagination إذا لم تكن موجودة
+  if (!document.getElementById('accountingPaginationControls')) {
+    const paginationDiv = document.createElement('div');
+    paginationDiv.id = 'accountingPaginationControls';
+    const ledgerSection = document.querySelector('section');
+    if (ledgerSection) {
+      ledgerSection.appendChild(paginationDiv);
+    }
+  }
+});
 </script>
 </body>
 </html>

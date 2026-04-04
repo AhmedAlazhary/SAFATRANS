@@ -102,8 +102,11 @@ function updateStockCards(stockItems) {
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="viewStockHistory('${item.itemName}')">
                                 <i class="bi bi-clock-history"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-warning" onclick="editStockBalance('${item.itemName}', ${item.balance})">
+                            <button class="btn btn-sm btn-outline-warning me-1" onclick="editStockBalance('${item.itemName}', ${item.balance})">
                                 <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStockItem('${item.itemName}')">
+                                <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
@@ -229,6 +232,37 @@ async function editStockBalance(itemName, currentBalance) {
             console.error('Error updating stock balance:', error);
             showNotification('خطأ في تحديث الرصيد', 'danger');
         }
+    }
+}
+
+async function deleteStockItem(itemName) {
+    if (!confirm(`هل أنت متأكد من حذف "${itemName}" من المخزون؟\nهذا سيمحو كل سجل الحركة لهذا الصنف أيضًا.`)) {
+        return;
+    }
+    
+    try {
+        // Delete all movements for this item
+        const movementsSnapshot = await db.collection('inventoryMovements')
+            .where('itemName', '==', itemName)
+            .get();
+        
+        const batch = db.batch();
+        movementsSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        // Delete stock balance
+        batch.delete(db.collection('stockBalances').doc(itemName));
+        
+        // Execute batch delete
+        await batch.commit();
+        
+        showNotification(`تم حذف "${itemName}" وجميع سجلاته بنجاح`, 'success');
+        await loadStockData();
+        
+    } catch (error) {
+        console.error('Error deleting stock item:', error);
+        showNotification('خطأ في حذف الصنف', 'danger');
     }
 }
 

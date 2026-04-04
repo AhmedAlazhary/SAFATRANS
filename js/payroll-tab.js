@@ -554,6 +554,151 @@ async function deleteSalary(salaryId) {
     }
 }
 
+function editSalary(salaryId) {
+    // Create edit modal
+    const modalHtml = `
+        <div class="modal fade" id="editSalaryModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">تعديل المرتب</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editSalaryForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">الشهر</label>
+                                    <select class="form-select" id="editSalaryMonth" required>
+                                        <option value="1">يناير</option>
+                                        <option value="2">فبراير</option>
+                                        <option value="3">مارس</option>
+                                        <option value="4">أبريل</option>
+                                        <option value="5">مايو</option>
+                                        <option value="6">يونيو</option>
+                                        <option value="7">يوليو</option>
+                                        <option value="8">أغسطس</option>
+                                        <option value="9">سبتمبر</option>
+                                        <option value="10">أكتوبر</option>
+                                        <option value="11">نوفمبر</option>
+                                        <option value="12">ديسمبر</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">السنة</label>
+                                    <input type="number" class="form-control" id="editSalaryYear" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">الراتب</label>
+                                    <input type="number" class="form-control" id="editSalaryAmount" step="0.01" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">السلفة</label>
+                                    <input type="number" class="form-control" id="editSalaryLoan" step="0.01" value="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">المستلم</label>
+                                    <select class="form-select" id="editSalaryRecipient">
+                                        <option value="">اختر المستلم</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">ملاحظات</label>
+                                    <textarea class="form-control" id="editSalaryNotes" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEditedSalary('${salaryId}')">حفظ التعديلات</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Load salary data and populate form
+    loadSalaryData(salaryId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('editSalaryModal'));
+    modal.show();
+    
+    // Remove modal when hidden
+    document.getElementById('editSalaryModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+async function loadSalaryData(salaryId) {
+    try {
+        const salaryDoc = await db.collection('salaries').doc(salaryId).get();
+        const salary = salaryDoc.data();
+        
+        // Populate form with current data
+        document.getElementById('editSalaryMonth').value = salary.month;
+        document.getElementById('editSalaryYear').value = salary.year;
+        document.getElementById('editSalaryAmount').value = salary.salary;
+        document.getElementById('editSalaryLoan').value = salary.loan || 0;
+        document.getElementById('editSalaryNotes').value = salary.notes || '';
+        
+        // Populate recipients dropdown
+        const recipientsSelect = document.getElementById('editSalaryRecipient');
+        recipientsSelect.innerHTML = '<option value="">اختر المستلم</option>';
+        if (masterData && masterData.workers && masterData.drivers) {
+            [...masterData.workers, ...masterData.drivers].forEach(person => {
+                const selected = person === salary.receivedBy ? 'selected' : '';
+                recipientsSelect.innerHTML += `<option value="${person}" ${selected}>${person}</option>`;
+            });
+        }
+        
+        // Store salary data globally for save function
+        window.currentSalary = salary;
+        
+    } catch (error) {
+        console.error('Error loading salary data:', error);
+        showNotification('خطأ في تحميل بيانات المرتب', 'danger');
+    }
+}
+
+async function saveEditedSalary(salaryId) {
+    try {
+        const originalSalary = window.currentSalary;
+        const newMonth = parseInt(document.getElementById('editSalaryMonth').value);
+        const newYear = parseInt(document.getElementById('editSalaryYear').value);
+        const newSalaryAmount = parseFloat(document.getElementById('editSalaryAmount').value);
+        const newLoan = parseFloat(document.getElementById('editSalaryLoan').value) || 0;
+        const newRecipient = document.getElementById('editSalaryRecipient').value;
+        const newNotes = document.getElementById('editSalaryNotes').value;
+        
+        const newReceived = newSalaryAmount - newLoan;
+        
+        // Update salary document
+        await db.collection('salaries').doc(salaryId).update({
+            month: newMonth,
+            year: newYear,
+            salary: newSalaryAmount,
+            loan: newLoan,
+            received: newReceived,
+            receivedBy: newRecipient,
+            notes: newNotes,
+            updatedBy: currentUser.email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Close modal and refresh
+        bootstrap.Modal.getInstance(document.getElementById('editSalaryModal')).hide();
+        showNotification('تم تعديل المرتب بنجاح', 'success');
+        await loadSalariesTable();
+        
+    } catch (error) {
+        console.error('Error saving edited salary:', error);
+        showNotification('خطأ في حفظ التعديلات', 'danger');
+    }
+}
+
 async function deleteLoan(loanId) {
     if (!confirm('هل أنت متأكد من حذف هذه السلفة؟')) return;
     
@@ -565,6 +710,147 @@ async function deleteLoan(loanId) {
     } catch (error) {
         console.error('Error deleting loan:', error);
         showNotification('خطأ في حذف السلفة', 'danger');
+    }
+}
+
+function editLoan(loanId) {
+    // Create edit modal
+    const modalHtml = `
+        <div class="modal fade" id="editLoanModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">تعديل السلفة</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editLoanForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">التاريخ</label>
+                                    <input type="date" class="form-control" id="editLoanDate" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">المبلغ</label>
+                                    <input type="number" class="form-control" id="editLoanAmount" step="0.01" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">اسم العامل</label>
+                                    <select class="form-select" id="editLoanWorker" required>
+                                        <option value="">اختر العامل</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">السبب</label>
+                                    <input type="text" class="form-control" id="editLoanReason" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">المستلم</label>
+                                    <select class="form-select" id="editLoanRecipient" required>
+                                        <option value="">اختر المستلم</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">ملاحظات</label>
+                                    <textarea class="form-control" id="editLoanNotes" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEditedLoan('${loanId}')">حفظ التعديلات</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Load loan data and populate form
+    loadLoanData(loanId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
+    modal.show();
+    
+    // Remove modal when hidden
+    document.getElementById('editLoanModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+async function loadLoanData(loanId) {
+    try {
+        const loanDoc = await db.collection('hajLoans').doc(loanId).get();
+        const loan = loanDoc.data();
+        
+        // Populate form with current data
+        document.getElementById('editLoanDate').value = loan.date.toDate ? loan.date.toDate().toISOString().split('T')[0] : new Date(loan.date).toISOString().split('T')[0];
+        document.getElementById('editLoanAmount').value = loan.amount;
+        document.getElementById('editLoanReason').value = loan.reason;
+        document.getElementById('editLoanNotes').value = loan.notes || '';
+        
+        // Populate workers dropdown
+        const workersSelect = document.getElementById('editLoanWorker');
+        workersSelect.innerHTML = '<option value="">اختر العامل</option>';
+        if (masterData && masterData.workers) {
+            masterData.workers.forEach(worker => {
+                const selected = worker === loan.workerName ? 'selected' : '';
+                workersSelect.innerHTML += `<option value="${worker}" ${selected}>${worker}</option>`;
+            });
+        }
+        
+        // Populate recipients dropdown
+        const recipientsSelect = document.getElementById('editLoanRecipient');
+        recipientsSelect.innerHTML = '<option value="">اختر المستلم</option>';
+        if (masterData && masterData.workers && masterData.drivers) {
+            [...masterData.workers, ...masterData.drivers].forEach(person => {
+                const selected = person === loan.receivedBy ? 'selected' : '';
+                recipientsSelect.innerHTML += `<option value="${person}" ${selected}>${person}</option>`;
+            });
+        }
+        
+        // Store loan data globally for save function
+        window.currentLoan = loan;
+        
+    } catch (error) {
+        console.error('Error loading loan data:', error);
+        showNotification('خطأ في تحميل بيانات السلفة', 'danger');
+    }
+}
+
+async function saveEditedLoan(loanId) {
+    try {
+        const originalLoan = window.currentLoan;
+        const newDate = new Date(document.getElementById('editLoanDate').value);
+        const newAmount = parseFloat(document.getElementById('editLoanAmount').value);
+        const newWorkerName = document.getElementById('editLoanWorker').value;
+        const newReason = document.getElementById('editLoanReason').value;
+        const newRecipient = document.getElementById('editLoanRecipient').value;
+        const newNotes = document.getElementById('editLoanNotes').value;
+        
+        // Update loan document
+        await db.collection('hajLoans').doc(loanId).update({
+            date: newDate,
+            workerName: newWorkerName,
+            amount: newAmount,
+            reason: newReason,
+            receivedBy: newRecipient,
+            notes: newNotes,
+            updatedBy: currentUser.email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Close modal and refresh
+        bootstrap.Modal.getInstance(document.getElementById('editLoanModal')).hide();
+        showNotification('تم تعديل السلفة بنجاح', 'success');
+        await loadLoansTable();
+        await calculateTotalLoans();
+        
+    } catch (error) {
+        console.error('Error saving edited loan:', error);
+        showNotification('خطأ في حفظ التعديلات', 'danger');
     }
 }
 

@@ -235,38 +235,41 @@ function initializeCustodyForms() {
 
 function populateCustodyDropdowns() {
     // Populate accountants dropdowns
-    const accountants = ['أحمد محمد', 'محمد علي', 'خالد أحمد', 'عمر خالد']; // Can be moved to master data
+    var accountants = ['أحمد محمد', 'محمد علي', 'خالد أحمد', 'عمر خالد']; // Can be moved to master data
     
-    const custodyAccountant = document.getElementById('custodyAccountant');
-    const spendAccountant = document.getElementById('spendAccountant');
+    var custodyAccountant = document.getElementById('custodyAccountant');
+    var spendAccountant = document.getElementById('spendAccountant');
     
     custodyAccountant.innerHTML = '<option value="">اختر المحاسب</option>';
     spendAccountant.innerHTML = '<option value="">اختر المحاسب</option>';
     
-    accountants.forEach(accountant => {
-        custodyAccountant.innerHTML += \`<option value="\${accountant}">\${accountant}</option>\`;
-        spendAccountant.innerHTML += \`<option value="\${accountant}">\${accountant}</option>\`;
+    accountants.forEach(function(accountant) {
+        custodyAccountant.innerHTML += '<option value="' + accountant + '">' + accountant + '</option>';
+        spendAccountant.innerHTML += '<option value="' + accountant + '">' + accountant + '</option>';
     });
     
     // Populate recipients dropdowns
-    const recipients = [...masterData.workers, ...masterData.drivers];
+    var recipients = [];
+    if (masterData && masterData.workers && masterData.drivers) {
+        recipients = masterData.workers.concat(masterData.drivers);
+    }
     
-    const custodyRecipient = document.getElementById('custodyRecipient');
-    const spendRecipient = document.getElementById('spendRecipient');
+    var custodyRecipient = document.getElementById('custodyRecipient');
+    var spendRecipient = document.getElementById('spendRecipient');
     
     custodyRecipient.innerHTML = '<option value="">اختر المستلم</option>';
     spendRecipient.innerHTML = '<option value="">اختر المستلم</option>';
     
-    recipients.forEach(recipient => {
-        custodyRecipient.innerHTML += \`<option value="\${recipient}">\${recipient}</option>\`;
-        spendRecipient.innerHTML += \`<option value="\${recipient}">\${recipient}</option>\`;
+    recipients.forEach(function(recipient) {
+        custodyRecipient.innerHTML += '<option value="' + recipient + '">' + recipient + '</option>';
+        spendRecipient.innerHTML += '<option value="' + recipient + '">' + recipient + '</option>';
     });
 }
 
 async function handleAddCustody(e) {
     e.preventDefault();
     
-    const custodyData = {
+    var custodyData = {
         type: 'addition',
         date: new Date(document.getElementById('custodyDate').value),
         accountant: document.getElementById('custodyAccountant').value,
@@ -298,7 +301,7 @@ async function handleAddCustody(e) {
 async function handleSpendCustody(e) {
     e.preventDefault();
     
-    const spendData = {
+    var spendData = {
         type: 'spending',
         date: new Date(document.getElementById('spendDate').value),
         accountant: document.getElementById('spendAccountant').value,
@@ -353,51 +356,42 @@ async function loadCustodyTable() {
 }
 
 function updateCustodyTable(transactions) {
-    const tbody = document.getElementById('custodyTable');
+    var tbody = document.getElementById('custodyTable');
     
     if (transactions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">لا توجد حركات مسجلة</td></tr>';
         return;
     }
     
-    tbody.innerHTML = transactions.map(transaction => `
-        <tr>
-            <td>${formatDate(transaction.date)}</td>
-            <td>${transaction.accountant}</td>
-            <td>
-                <span class="badge ${transaction.type === 'addition' ? 'bg-success' : 'bg-danger'}">
-                    ${transaction.type === 'addition' ? 'إضافة' : 'صرف'}
-                </span>
-            </td>
-            <td class="fw-bold">${transaction.amount.toFixed(2)}</td>
-            <td>${transaction.recipient}</td>
-            <td>${transaction.reason}</td>
-            <td>${transaction.notes || '-'}</td>
-            <td>
-                <button class="btn btn-sm btn-danger" onclick="deleteCustodyTransaction('${transaction.id}')">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-            <td>
-                <button class="btn btn-sm btn-info" onclick="editCustodyTransaction('${transaction.id}')">
-                    <i class="bi bi-pencil"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = transactions.map(function(transaction) {
+        var typeClass = transaction.type === 'addition' ? 'bg-success' : 'bg-danger';
+        var typeText = transaction.type === 'addition' ? 'إضافة' : 'صرف';
+        
+        return '<tr>' +
+            '<td>' + formatDate(transaction.date) + '</td>' +
+            '<td>' + transaction.accountant + '</td>' +
+            '<td><span class="badge ' + typeClass + '">' + typeText + '</span></td>' +
+            '<td class="fw-bold">' + transaction.amount.toFixed(2) + '</td>' +
+            '<td>' + transaction.recipient + '</td>' +
+            '<td>' + transaction.reason + '</td>' +
+            '<td>' + (transaction.notes || '-') + '</td>' +
+            '<td><button class="btn btn-sm btn-danger" onclick="deleteCustodyTransaction(\'' + transaction.id + '\')"><i class="bi bi-trash"></i></button></td>' +
+            '<td><button class="btn btn-sm btn-info" onclick="editCustodyTransaction(\'' + transaction.id + '\')"><i class="bi bi-pencil"></i></button></td>' +
+        '</tr>';
+    }).join('');
 }
 
 async function calculateCustodySummary() {
     try {
-        const custodySnapshot = await db.collection('garageCustody').get();
-        const transactions = custodySnapshot.docs.map(doc => doc.data());
+        var custodySnapshot = await db.collection('garageCustody').get();
+        var transactions = custodySnapshot.docs.map(function(doc) { return doc.data(); });
         
-        const additions = transactions.filter(t => t.type === 'addition');
-        const spendings = transactions.filter(t => t.type === 'spending');
+        var additions = transactions.filter(function(t) { return t.type === 'addition'; });
+        var spendings = transactions.filter(function(t) { return t.type === 'spending'; });
         
-        const totalIn = additions.reduce((sum, t) => sum + t.amount, 0);
-        const totalOut = spendings.reduce((sum, t) => sum + t.amount, 0);
-        const netBalance = totalIn - totalOut;
+        var totalIn = additions.reduce(function(sum, t) { return sum + t.amount; }, 0);
+        var totalOut = spendings.reduce(function(sum, t) { return sum + t.amount; }, 0);
+        var netBalance = totalIn - totalOut;
         
         // Update summary cards
         document.getElementById('totalCustodyIn').textContent = totalIn.toFixed(2);
@@ -427,50 +421,48 @@ async function deleteCustodyTransaction(transactionId) {
 
 function editCustodyTransaction(transactionId) {
     // Create edit modal
-    const modalHtml = `
-        <div class="modal fade" id="editCustodyModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">تعديل حركة العهدة</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="editCustodyForm">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">التاريخ</label>
-                                    <input type="date" class="form-control" id="editCustodyDate" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">القيمة</label>
-                                    <input type="number" class="form-control" id="editCustodyAmount" step="0.01" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">المستلم</label>
-                                    <select class="form-select" id="editCustodyRecipient" required>
-                                        <option value="">اختر المستلم</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">السبب</label>
-                                    <input type="text" class="form-control" id="editCustodyReason" required>
-                                </div>
-                                <div class="col-12 mb-3">
-                                    <label class="form-label">ملاحظات</label>
-                                    <textarea class="form-control" id="editCustodyNotes" rows="2"></textarea>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-primary" onclick="saveEditedCustody('${transactionId}')">حفظ التعديلات</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    const modalHtml = '<div class="modal fade" id="editCustodyModal" tabindex="-1">' +
+        '<div class="modal-dialog">' +
+        '<div class="modal-content">' +
+        '<div class="modal-header">' +
+        '<h5 class="modal-title">تعديل حركة العهدة</h5>' +
+        '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+        '<form id="editCustodyForm">' +
+        '<div class="row">' +
+        '<div class="col-md-6 mb-3">' +
+        '<label class="form-label">التاريخ</label>' +
+        '<input type="date" class="form-control" id="editCustodyDate" required>' +
+        '</div>' +
+        '<div class="col-md-6 mb-3">' +
+        '<label class="form-label">القيمة</label>' +
+        '<input type="number" class="form-control" id="editCustodyAmount" step="0.01" required>' +
+        '</div>' +
+        '<div class="col-md-6 mb-3">' +
+        '<label class="form-label">المستلم</label>' +
+        '<select class="form-select" id="editCustodyRecipient" required>' +
+        '<option value="">اختر المستلم</option>' +
+        '</select>' +
+        '</div>' +
+        '<div class="col-md-6 mb-3">' +
+        '<label class="form-label">السبب</label>' +
+        '<input type="text" class="form-control" id="editCustodyReason" required>' +
+        '</div>' +
+        '<div class="col-12 mb-3">' +
+        '<label class="form-label">ملاحظات</label>' +
+        '<textarea class="form-control" id="editCustodyNotes" rows="2"></textarea>' +
+        '</div>' +
+        '</div>' +
+        '</form>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>' +
+        '<button type="button" class="btn btn-primary" onclick="saveEditedCustody(\'' + transactionId + '\')">حفظ التعديلات</button>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
@@ -500,10 +492,13 @@ async function loadCustodyData(transactionId) {
         // Populate recipients dropdown
         const recipientsSelect = document.getElementById('editCustodyRecipient');
         recipientsSelect.innerHTML = '<option value="">اختر المستلم</option>';
-        [...masterData.workers, ...masterData.drivers].forEach(person => {
-            const selected = person === transaction.recipient ? 'selected' : '';
-            recipientsSelect.innerHTML += `<option value="${person}" ${selected}>${person}</option>`;
-        });
+        if (masterData && masterData.workers && masterData.drivers) {
+            var recipients = masterData.workers.concat(masterData.drivers);
+            recipients.forEach(function(person) {
+                var selected = person === transaction.recipient ? 'selected' : '';
+                recipientsSelect.innerHTML += '<option value="' + person + '" ' + selected + '>' + person + '</option>';
+            });
+        }
         
         // Store transaction data globally for save function
         window.currentCustodyTransaction = transaction;
@@ -561,9 +556,9 @@ function exportCustodyToExcel() {
     showNotification('جاري تحضير ملف Excel...', 'info');
     
     // Get all custody data
-    db.collection('garageCustody').get().then(snapshot => {
-        const custodyData = snapshot.docs.map(doc => {
-            const data = doc.data();
+    db.collection('garageCustody').get().then(function(snapshot) {
+        var custodyData = snapshot.docs.map(function(doc) {
+            var data = doc.data();
             return {
                 'التاريخ': formatDate(data.date),
                 'المحاسب': data.accountant,
@@ -576,13 +571,9 @@ function exportCustodyToExcel() {
         });
         
         // Export to Excel
-        const ws = XLSX.utils.json_to_sheet(custodyData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "عهدة الجراج");
-        XLSX.writeFile(wb, \`عهدة_الجراج_\${new Date().toISOString().split('T')[0]}.xlsx\`);
+        ExcelExporter.exportToExcel(custodyData, 'عهدة_الجراج_' + new Date().toISOString().split('T')[0] + '.xlsx');
         
-        showNotification('تم تصدير ملف Excel بنجاح', 'success');
-    }).catch(error => {
+    }).catch(function(error) {
         console.error('Error exporting to Excel:', error);
         showNotification('خطأ في تصدير ملف Excel', 'danger');
     });
@@ -590,54 +581,26 @@ function exportCustodyToExcel() {
 
 function printCustody() {
     const custodyTable = document.getElementById('custodyTable');
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(\`
-        <!DOCTYPE html>
-        <html dir="rtl">
-            <head>
-                <title>طباعة عهدة الجراج</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-                    th { background-color: #f2f2f2; }
-                    .badge-success { background-color: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px; }
-                    .badge-danger { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; }
-                    .summary { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-                    @media print { .no-print { display: none; } }
-                </style>
-            </head>
-            <body>
-                <h1 style="text-align: center; margin-bottom: 30px;">عهدة الجراج</h1>
-                <p style="text-align: center; margin-bottom: 30px;">التاريخ: \${new Date().toLocaleDateString('ar-EG')}</p>
-                
-                <div class="summary">
-                    <div style="display: flex; justify-content: space-around;">
-                        <div>إجمالي الوارد: <span id="totalCustodyIn"></span></div>
-                        <div>إجمالي المصروف: <span id="totalCustodyOut"></span></div>
-                        <div>الصافي المتبقي: <span id="netCustodyBalance"></span></div>
-                    </div>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>التاريخ</th>
-                            <th>المحاسب</th>
-                            <th>نوع العملية</th>
-                            <th>القيمة</th>
-                            <th>المستلم</th>
-                            <th>السبب</th>
-                            <th>ملاحظات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        \${custodyTable.innerHTML}
-                    </tbody>
-                </table>
-            </body>
-        </html>
-    \`);
+    var printWindow = window.open('', '_blank');
+    var htmlContent = '<!DOCTYPE html><html dir="rtl"><head><title>طباعة عهدة الجراج</title>' +
+        '<style>body { font-family: Arial, sans-serif; margin: 20px; }' +
+        'table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }' +
+        'th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }' +
+        'th { background-color: #f2f2f2; }' +
+        '.badge-success { background-color: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px; }' +
+        '.badge-danger { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; }' +
+        '.summary { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }' +
+        '@media print { .no-print { display: none; } }</style></head><body>' +
+        '<h1 style="text-align: center; margin-bottom: 30px;">عهدة الجراج</h1>' +
+        '<p style="text-align: center; margin-bottom: 30px;">التاريخ: ' + new Date().toLocaleDateString('ar-EG') + '</p>' +
+        '<div class="summary"><div style="display: flex; justify-content: space-around;">' +
+        '<div>إجمالي الوارد: <span id="totalCustodyIn"></span></div>' +
+        '<div>إجمالي المصروف: <span id="totalCustodyOut"></span></div>' +
+        '<div>الصافي المتبقي: <span id="netCustodyBalance"></span></div></div></div>' +
+        '<table><thead><tr><th>التاريخ</th><th>المحاسب</th><th>نوع العملية</th><th>القيمة</th><th>المستلم</th><th>السبب</th><th>ملاحظات</th></tr></thead>' +
+        '<tbody>' + custodyTable.innerHTML + '</tbody></table></body></html>';
+    
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
     printWindow.print();
 }

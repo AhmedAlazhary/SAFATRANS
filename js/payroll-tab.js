@@ -2,7 +2,7 @@
 
 async function loadPayroll() {
     const payrollContent = document.getElementById('payroll');
-    payrollContent.innerHTML = `
+    const content = `
         <h2 class="mb-4">
             <i class="bi bi-cash-stack"></i>
             السلف والمرتبات
@@ -156,6 +156,15 @@ async function loadPayroll() {
             </div>
         </div>
     `;
+    
+    // Use safe HTML setting
+    if (window.securityEnhancer) {
+        window.securityEnhancer.safeSetHTML(payrollContent, content);
+    } else if (window.advancedSecurity) {
+        payrollContent.innerHTML = window.advancedSecurity.sanitizeHTML(content);
+    } else {
+        payrollContent.innerHTML = content;
+    }
     
     // Initialize event listeners and load data
     initializePayrollForms();

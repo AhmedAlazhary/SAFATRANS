@@ -4,6 +4,8 @@ import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, i
 import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { mountAppNav, APP_PAGES } from "./app-nav.js";
+import "./security-enhancer.js";
+import "./advanced-security.js";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -23,9 +25,18 @@ let currentUser = null;
 window.notify = (msg, type) => {
     const tc = document.getElementById('toast-container');
     if (!tc) return console.warn("Toast container not found:", msg);
+    
+    // Sanitize message to prevent XSS
+    let sanitizedMsg = msg;
+    if (window.securityEnhancer) {
+        sanitizedMsg = window.securityEnhancer.sanitizeHTML(msg);
+    } else if (window.advancedSecurity) {
+        sanitizedMsg = window.advancedSecurity.sanitizeHTML(msg);
+    }
+    
     const t = document.createElement('div');
     t.className = `toast ${type === 'success' ? 'success-btn' : (type === 'error' ? 'danger-btn' : 'primary-btn')}`;
-    t.textContent = msg;
+    t.textContent = sanitizedMsg;
     tc.appendChild(t);
     setTimeout(() => t.remove(), 3000);
 };

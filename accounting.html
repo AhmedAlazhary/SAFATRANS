@@ -270,10 +270,21 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./js/firebase-config.js";
 import { mountAppNav } from "./js/app-nav.js";
-// import optimization systems
+
+<!-- Firebase Optimization -->
+    <script src="js/comprehensive-firebase-optimizer.js"></script>
+    
+    <!-- Security Enhancer -->
+    <script src="js/security-enhancer.js"></script>
+    
+    <!-- Advanced Security -->
+    <script src="js/advanced-security.js"></script>
+
 import "./js/firebase-performance-optimizer.js";
 import "./js/realtime-optimizer.js";
 import "./js/comprehensive-firebase-optimizer.js";
+import "./js/security-enhancer.js";
+import "./js/advanced-security.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);

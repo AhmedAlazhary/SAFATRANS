@@ -537,10 +537,18 @@ function showNotification(message, type = 'info') {
         return;
     }
     
+    // Sanitize message to prevent XSS
+    let sanitizedMessage = message;
+    if (window.securityEnhancer) {
+        sanitizedMessage = window.securityEnhancer.sanitizeHTML(message);
+    } else if (window.advancedSecurity) {
+        sanitizedMessage = window.advancedSecurity.sanitizeHTML(message);
+    }
+    
     // Use own notification system
     const alertHtml = `
         <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
+            ${sanitizedMessage}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
